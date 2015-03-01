@@ -22,10 +22,22 @@ bool Application::Init(int argc, char** argv)
 
 int Application::Run()
 {
+    int frames = 99;
+
     while (true)
     {
         if (!sDrawing->Render())
             break;
+
+        if (++frames == 100)
+        {
+            core::stringw str = L"Rubik's Cube - KIV/UIR [ ";
+            str += (s32)sDrawing->getDriver()->getFPS();
+            str += L" FPS ]";
+
+            sDrawing->getDevice()->setWindowCaption(str.c_str());
+            frames = 0;
+        }
     }
 
     return 0;
