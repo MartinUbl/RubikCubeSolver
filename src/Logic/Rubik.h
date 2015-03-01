@@ -29,16 +29,18 @@ static SColor rubikColorMap[] = {
     { 255,   0,   0,   0 }
 };
 
+static char rubikColorCode[] = { 'R', 'G', 'B', 'Y', 'W', 'O', '-' };
+
 enum CubeFace
 {
-    CF_TOP = 0,
-    CF_BOTTOM = 1,
+    CF_UP = 0,
+    CF_DOWN = 1,
     CF_BACK = 2,
     CF_FRONT = 3,
     CF_RIGHT = 4,
     CF_LEFT = 5,
 
-    CF_BEGIN = CF_TOP,
+    CF_BEGIN = CF_UP,
     CF_END = CF_LEFT + 1,
     CF_COUNT = CF_END
 };
@@ -61,15 +63,22 @@ static vector3df cubeFaceRotation[] = {
     { -90.0f, 90.0f, 0 }
 };
 
+class RubikCube;
+
 struct CubeAtomFace
 {
     IMeshSceneNode* meshNode;
     RubikColor color;
+    RubikCube* parent;
 
     void setColor(RubikColor cl)
     {
         meshManipulator->setVertexColors(meshNode->getMesh(), rubikColorMap[cl]);
         color = cl;
+    }
+    RubikColor getColor()
+    {
+        return color;
     }
 };
 
@@ -84,14 +93,20 @@ class RubikCube
         RubikCube();
         ~RubikCube();
 
+        void Render();
+
         void BuildCube(ISceneManager* scene, IVideoDriver* videoDriver);
         CubeAtom* GetAtom(int x, int y, int z);
 
+        void PrintOut();
+
     private:
-        CubeAtom* m_cubeAtoms[27];
+        CubeAtom* m_cubeAtoms[3][3][3];
+        RubikColor m_faceArray[CF_COUNT][3][3];
+        ITexture* m_faceTexture, *m_faceMiniTexture;
 
         void SetCubeAtom(int x, int y, int z, CubeAtom* atom);
-
+        void CacheCube();
         CubeAtom* BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriver, vector3df basePosition, vector3di cubeOffset);
         CubeAtomFace* BuildFace(ISceneManager* scene, IVideoDriver* videoDriver, CubeFace side, vector3df basePosition);
 };

@@ -48,6 +48,8 @@ bool Drawing::Render()
     m_irrDriver->beginScene(true, true, SColor(255, 100, 140, 101));
 
     m_irrScene->drawAll();
+    m_cube->Render();
+
     m_irrGui->drawAll();
 
     m_irrDriver->endScene();
