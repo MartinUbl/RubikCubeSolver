@@ -14,7 +14,12 @@ Drawing::~Drawing()
 
 bool Drawing::Init()
 {
-    m_irrDevice = createDevice(video::EDT_SOFTWARE, dimension2d<u32>(800, 600), 32, false, true, true, 0);
+    SIrrlichtCreationParameters params = SIrrlichtCreationParameters();
+    params.AntiAlias = 8;
+    params.Bits = 32;
+    params.DriverType = video::EDT_OPENGL;
+    params.WindowSize = core::dimension2d<u32>(800, 600);
+    m_irrDevice = createDeviceEx(params);
 
     if (!m_irrDevice)
         return false;
@@ -24,6 +29,7 @@ bool Drawing::Init()
     m_irrGui = m_irrDevice->getGUIEnvironment();
 
     m_mainCamera = m_irrScene->addCameraSceneNode(0, vector3df(15, 25, -30), vector3df(0, 0, 0));
+    m_irrScene->addLightSceneNode(m_mainCamera);
 
     m_cube = new RubikCube();
     m_cube->BuildCube(m_irrScene, m_irrDriver);
