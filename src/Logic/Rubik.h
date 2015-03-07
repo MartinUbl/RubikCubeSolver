@@ -25,7 +25,7 @@ static SColor rubikColorMap[] = {
     { 255,   0,   0, 200 },
     { 255, 200, 200,   0 },
     { 255, 255, 255, 255 },
-    { 255, 255, 127,   0 },
+    { 255, 207,  64,   0 },
     { 255,   0,   0,   0 }
 };
 
@@ -87,6 +87,67 @@ struct CubeAtom
     CubeAtomFace* faces[CF_COUNT];
 };
 
+// quarter-turn metric flips
+enum CubeFlip
+{
+    FLIP_U_P = 0,
+    FLIP_U_N = 1,
+    FLIP_D_P = 2,
+    FLIP_D_N = 3,
+    FLIP_F_P = 4,
+    FLIP_F_N = 5,
+    FLIP_B_P = 6,
+    FLIP_B_N = 7,
+    FLIP_L_P = 8,
+    FLIP_L_N = 9,
+    FLIP_R_P = 10,
+    FLIP_R_N = 11,
+
+    FLIP_MAX = FLIP_R_N + 1,
+
+    FLIP_NONE       // used just as "flag", not real turn
+};
+
+static char* cubeFlipStr[] = {
+    "U",
+    "U-",
+    "D",
+    "D-",
+    "F",
+    "F-",
+    "B",
+    "B-",
+    "L",
+    "L-",
+    "R",
+    "R-"
+};
+
+// retrieves the flip type, that reverses supplied one
+static CubeFlip getBackFlip(CubeFlip src)
+{
+    return (CubeFlip)((1 - (src % 2)) + 2*(src / 2));
+}
+
+// retrieves flip for supplied string identifier
+static CubeFlip getFlipForStr(char* str)
+{
+    for (int i = 0; i < FLIP_MAX; i++)
+    {
+        if (strcmp(str, cubeFlipStr[i]) == 0)
+            return (CubeFlip)i;
+    }
+
+    return FLIP_NONE;
+}
+
+static char* getStrForFlip(CubeFlip fl)
+{
+    if (fl < FLIP_MAX)
+        return cubeFlipStr[fl];
+    return nullptr;
+}
+
 class RubikCube
 {
     public:
@@ -98,6 +159,10 @@ class RubikCube
         void BuildCube(ISceneManager* scene, IVideoDriver* videoDriver);
         CubeAtom* GetAtom(int x, int y, int z);
 
+        void DoFlip(CubeFlip flip, bool draw);
+
+        bool IsSolved();
+
         void PrintOut();
 
     private:
@@ -107,8 +172,12 @@ class RubikCube
 
         void SetCubeAtom(int x, int y, int z, CubeAtom* atom);
         void CacheCube();
+        void RestoreCubeCache();
         CubeAtom* BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriver, vector3df basePosition, vector3di cubeOffset);
         CubeAtomFace* BuildFace(ISceneManager* scene, IVideoDriver* videoDriver, CubeFace side, vector3df basePosition);
+
+        void CircularSwap(RubikColor *cl1, RubikColor *cl2, RubikColor *cl3, RubikColor *cl4);
+        void ReverseCircularSwap(RubikColor *cl1, RubikColor *cl2, RubikColor *cl3, RubikColor *cl4);
 };
 
 #endif

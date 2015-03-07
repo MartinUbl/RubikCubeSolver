@@ -19,6 +19,7 @@ bool Drawing::Init()
     params.Bits = 32;
     params.DriverType = video::EDT_OPENGL;
     params.WindowSize = core::dimension2d<u32>(800, 600);
+    params.EventReceiver = &m_eventReceiver;
     m_irrDevice = createDeviceEx(params);
 
     if (!m_irrDevice)
@@ -28,7 +29,12 @@ bool Drawing::Init()
     m_irrScene = m_irrDevice->getSceneManager();
     m_irrGui = m_irrDevice->getGUIEnvironment();
 
-    m_mainCamera = m_irrScene->addCameraSceneNode(0, vector3df(15, 25, -30), vector3df(0, 0, 0));
+    m_cameraAngleX = - PI / 4.0f;
+    m_cameraAngleY = PI / 4.0f;
+
+    m_mainCamera = m_irrScene->addCameraSceneNode(0, vector3df(25, 25, -25), vector3df(0, 0, 0));
+    updateCameraPosition();
+
     m_irrScene->addLightSceneNode(m_mainCamera);
 
     m_cube = new RubikCube();
@@ -55,4 +61,46 @@ bool Drawing::Render()
     m_irrDriver->endScene();
 
     return true;
+}
+
+void Drawing::updateCameraPosition()
+{
+    m_mainCamera->setPosition(vector3df(35 * cos(m_cameraAngleX) * cos(m_cameraAngleY), 35 * sin(m_cameraAngleY), 35 * sin(m_cameraAngleX) * cos(m_cameraAngleY)));
+}
+
+void Drawing::mouseMoveCallback(int deltaX, int deltaY)
+{
+    if (m_eventReceiver.GetMouseState().LeftButtonDown)
+    {
+        m_cameraAngleX -= (float)deltaX * PI / 280.0f;
+        m_cameraAngleY += (float)deltaY * PI / 280.0f;
+
+        updateCameraPosition();
+    }
+}
+
+bool MouseEventReceiver::OnEvent(const SEvent& event)
+{
+    // Remember the mouse state
+    if (event.EventType == irr::EET_MOUSE_INPUT_EVENT)
+    {
+        switch (event.MouseInput.Event)
+        {
+        case EMIE_LMOUSE_PRESSED_DOWN:
+            MouseState.LeftButtonDown = true;
+            break;
+        case EMIE_LMOUSE_LEFT_UP:
+            MouseState.LeftButtonDown = false;
+            break;
+        case EMIE_MOUSE_MOVED:
+            sDrawing->mouseMoveCallback(event.MouseInput.X - MouseState.Position.X, event.MouseInput.Y - MouseState.Position.Y);
+            MouseState.Position.X = event.MouseInput.X;
+            MouseState.Position.Y = event.MouseInput.Y;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return false;
 }
