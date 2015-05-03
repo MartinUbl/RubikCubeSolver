@@ -4,6 +4,7 @@
 #define CUBE_SIZE 18.0f
 #define ATOM_SIZE CUBE_SIZE/3.0f
 #define ATOM_SPACING 0.2f
+#define ANIM_TIMER_DEFAULT 200
 
 static IMeshManipulator* meshManipulator = nullptr;
 

@@ -109,6 +109,7 @@ bool EventReceiver::OnEvent(const SEvent& event)
         {
             case KEY_KEY_R:
             {
+                cout << "Nahodne rozmichavam kostku:" << endl;
                 std::list<CubeFlip> fliplist;
                 sDrawing->getCube()->Scramble(&fliplist);
                 sDrawing->getCube()->ProceedFlipSequence(&fliplist, true);
@@ -116,8 +117,10 @@ bool EventReceiver::OnEvent(const SEvent& event)
             }
             case KEY_KEY_S:
             {
+                cout << "Hledam reseni..." << endl;
                 std::list<CubeFlip> fliplist;
                 sDrawing->getCube()->Solve(&fliplist);
+                cout << "Resim kostku:" << endl;
                 sDrawing->getCube()->ProceedFlipSequence(&fliplist, true);
                 break;
             }

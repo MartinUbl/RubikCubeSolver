@@ -88,7 +88,7 @@ void RubikCube::Render()
     if (m_toProgress != FLIP_NONE && m_progressStart > 0)
     {
         unsigned int diff = getMSTimeDiff(m_progressStart, getMSTime());
-        float progress = ((float)diff) / 500.0f;
+        float progress = ((float)diff) / (float)ANIM_TIMER_DEFAULT;
 
         bool endflag = false;
         if (progress >= 1.0f)
@@ -366,7 +366,10 @@ void RubikCube::Render()
                 m_progressStart = getMSTime();
             }
             else
+            {
                 m_toProgress = FLIP_NONE;
+                cout << "\b\b  " << endl;
+            }
         }
     }
 
@@ -441,6 +444,9 @@ void RubikCube::ProceedFlipSequence(std::list<CubeFlip> *source, bool animate)
     }
     else
     {
+        if (!source || source->empty())
+            return;
+
         CubeFlip fl;
         for (std::list<CubeFlip>::iterator itr = source->begin(); itr != source->end(); ++itr)
         {
@@ -450,16 +456,14 @@ void RubikCube::ProceedFlipSequence(std::list<CubeFlip> *source, bool animate)
             {
                 fl = (CubeFlip)(fl - 1);
                 m_flipQueue.push(fl);
-                cout << getStrForFlip(fl) << ", ";
             }
             m_flipQueue.push(fl);
-            cout << getStrForFlip(fl) << ", ";
         }
-
-        cout << endl;
 
         m_toProgress = m_flipQueue.front();
         m_flipQueue.pop();
+
+        cout << getStrForFlip(m_toProgress) << ", ";
 
         m_progressStart = getMSTime();
     }
