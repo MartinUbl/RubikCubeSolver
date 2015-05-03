@@ -42,6 +42,9 @@ bool Drawing::Init()
     m_cube = new RubikCube();
     m_cube->BuildCube(m_irrScene, m_irrDriver);
 
+    m_appFont = m_irrGui->getFont("../data/appfont.png");
+    m_appFont->setKerningWidth(-3);
+
     return true;
 }
 
@@ -57,6 +60,16 @@ bool Drawing::Render()
 
     m_irrScene->drawAll();
     m_cube->Render();
+
+    m_appFont->draw(L"OVLADANI\nR\t\t\t\t\trozmichat\nS\t\t\t\t\tslozit\n+ -\t\t\tzrychlit/zpomalit otaceni", rect<s32>(5, 5, 100, 100), SColor(255, 0, 0, 127));
+
+    stringw repstr = "Rychlost otaceni: ";
+    std::string str = std::to_string(m_cube->GetFlipTiming() / 1000.0f);
+    str.erase(str.find_last_not_of('0') + 1, std::string::npos);
+    repstr += str.c_str();
+    repstr += " s";
+
+    m_appFont->draw(repstr, rect<s32>(5, 600 - 24, 100, 100), SColor(255, 0, 0, 127));
 
     m_irrGui->drawAll();
 
@@ -122,6 +135,18 @@ bool EventReceiver::OnEvent(const SEvent& event)
                 sDrawing->getCube()->Solve(&fliplist);
                 cout << "Resim kostku:" << endl;
                 sDrawing->getCube()->ProceedFlipSequence(&fliplist, true);
+                break;
+            }
+            case KEY_MINUS:
+            case KEY_SUBTRACT:
+            {
+                sDrawing->getCube()->UpdateFlipTiming(+100);
+                break;
+            }
+            case KEY_PLUS:
+            case KEY_ADD:
+            {
+                sDrawing->getCube()->UpdateFlipTiming(-100);
                 break;
             }
         }

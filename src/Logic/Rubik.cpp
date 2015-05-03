@@ -13,6 +13,7 @@ RubikCube::RubikCube()
 {
     m_progressStart = 0;
     m_toProgress = FLIP_NONE;
+    m_flipTiming = ANIM_TIMER_DEFAULT;
 }
 
 RubikCube::~RubikCube()
@@ -88,7 +89,7 @@ void RubikCube::Render()
     if (m_toProgress != FLIP_NONE && m_progressStart > 0)
     {
         unsigned int diff = getMSTimeDiff(m_progressStart, getMSTime());
-        float progress = ((float)diff) / (float)ANIM_TIMER_DEFAULT;
+        float progress = ((float)diff) / (float)m_flipTiming;
 
         bool endflag = false;
         if (progress >= 1.0f)
@@ -205,9 +206,6 @@ void RubikCube::Render()
                     if (!caf->meshNode)
                         continue;
                     bool black = caf->color == CL_NONE;
-
-                    // !!!
-                    //progress = 0;
 
                     // group 0 = front and back flip
                     if (group == 0)

@@ -6,7 +6,7 @@
 
 Application::Application()
 {
-    //
+    m_graphicMode = true;
 }
 
 Application::~Application()

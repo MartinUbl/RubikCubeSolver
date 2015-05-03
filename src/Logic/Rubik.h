@@ -194,10 +194,14 @@ class RubikCube
 
         void PrintOut();
 
+        void UpdateFlipTiming(int howmuch) { if (m_flipTiming + howmuch >= 100 && m_flipTiming + howmuch <= 5000) m_flipTiming += howmuch; };
+        int GetFlipTiming() { return m_flipTiming; };
+
     private:
         CubeAtom* m_cubeAtoms[3][3][3];
         ITexture* m_faceTexture, *m_faceMiniTexture;
         unsigned char m_solveStage;
+        int m_flipTiming;
 
         CubeFlip m_toProgress;
         unsigned int m_progressStart;

@@ -50,6 +50,7 @@ class Drawing
         IVideoDriver* m_irrDriver;
         ISceneManager* m_irrScene;
         IGUIEnvironment* m_irrGui;
+        IGUIFont* m_appFont;
         EventReceiver m_eventReceiver;
 
         ICameraSceneNode* m_mainCamera;
