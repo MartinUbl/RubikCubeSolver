@@ -73,8 +73,8 @@ static vector3df cubeFaceRotation[] = {
     { -180.0f, 0, 0 },
     { 90.0f, 0.0f, 0.0f },
     { -90.0f, 0.0f, 0.0f },
-    { -90.0f, -90.0f, 0 },
-    { -90.0f, 90.0f, 0 }
+    { 0.0f, 0.0f, -90.0f },
+    { 0.0f, 0.0f, 90.0f }
 };
 
 class RubikCube;
@@ -82,6 +82,8 @@ class RubikCube;
 struct CubeAtomFace
 {
     IMeshSceneNode* meshNode;
+    vector3df basePosition;
+    vector3df baseRotation;
     RubikColor color;
     RubikCube* parent;
 
@@ -184,7 +186,10 @@ class RubikCube
 
         void DoFlip(CubeFlip flip, bool draw);
 
+        void Scramble(std::list<CubeFlip> *target);
         void Solve(std::list<CubeFlip> *target);
+
+        void ProceedFlipSequence(std::list<CubeFlip> *source, bool animate);
 
         void PrintOut();
 
@@ -192,6 +197,10 @@ class RubikCube
         CubeAtom* m_cubeAtoms[3][3][3];
         ITexture* m_faceTexture, *m_faceMiniTexture;
         unsigned char m_solveStage;
+
+        CubeFlip m_toProgress;
+        unsigned int m_progressStart;
+        std::queue<CubeFlip> m_flipQueue;
 
         void SetCubeAtom(int x, int y, int z, CubeAtom* atom);
         CubeAtom* BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriver, vector3df basePosition, vector3di cubeOffset);

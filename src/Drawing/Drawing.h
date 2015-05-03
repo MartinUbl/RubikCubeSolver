@@ -7,10 +7,10 @@
 
 class RubikCube;
 
-class MouseEventReceiver : public IEventReceiver
+class EventReceiver : public IEventReceiver
 {
     public:
-        MouseEventReceiver() { }
+        EventReceiver() { }
 
         struct SMouseState
         {
@@ -38,6 +38,7 @@ class Drawing
 
         IrrlichtDevice* getDevice() { return m_irrDevice; };
         IVideoDriver* getDriver() { return m_irrDriver; };
+        RubikCube* getCube() { return m_cube; };
 
         void mouseMoveCallback(int deltaX, int deltaY);
 
@@ -49,7 +50,7 @@ class Drawing
         IVideoDriver* m_irrDriver;
         ISceneManager* m_irrScene;
         IGUIEnvironment* m_irrGui;
-        MouseEventReceiver m_eventReceiver;
+        EventReceiver m_eventReceiver;
 
         ICameraSceneNode* m_mainCamera;
         float m_cameraAngleX, m_cameraAngleY;

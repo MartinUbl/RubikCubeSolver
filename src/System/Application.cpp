@@ -2,6 +2,8 @@
 #include "Application.h"
 #include "Drawing.h"
 
+#include <ctime>
+
 Application::Application()
 {
     //
@@ -16,6 +18,8 @@ bool Application::Init(int argc, char** argv)
 {
     if (!sDrawing->Init())
         return false;
+
+    srand((unsigned int)time(NULL));
 
     return true;
 }

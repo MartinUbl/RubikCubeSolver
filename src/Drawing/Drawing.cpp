@@ -1,5 +1,6 @@
 #include "Global.h"
 #include "bigint.h"
+#include <queue>
 #include "Rubik.h"
 #include "Drawing.h"
 
@@ -80,26 +81,46 @@ void Drawing::mouseMoveCallback(int deltaX, int deltaY)
     }
 }
 
-bool MouseEventReceiver::OnEvent(const SEvent& event)
+bool EventReceiver::OnEvent(const SEvent& event)
 {
     // Remember the mouse state
     if (event.EventType == irr::EET_MOUSE_INPUT_EVENT)
     {
         switch (event.MouseInput.Event)
         {
-        case EMIE_LMOUSE_PRESSED_DOWN:
-            MouseState.LeftButtonDown = true;
-            break;
-        case EMIE_LMOUSE_LEFT_UP:
-            MouseState.LeftButtonDown = false;
-            break;
-        case EMIE_MOUSE_MOVED:
-            sDrawing->mouseMoveCallback(event.MouseInput.X - MouseState.Position.X, event.MouseInput.Y - MouseState.Position.Y);
-            MouseState.Position.X = event.MouseInput.X;
-            MouseState.Position.Y = event.MouseInput.Y;
-            break;
-        default:
-            break;
+            case EMIE_LMOUSE_PRESSED_DOWN:
+                MouseState.LeftButtonDown = true;
+                break;
+            case EMIE_LMOUSE_LEFT_UP:
+                MouseState.LeftButtonDown = false;
+                break;
+            case EMIE_MOUSE_MOVED:
+                sDrawing->mouseMoveCallback(event.MouseInput.X - MouseState.Position.X, event.MouseInput.Y - MouseState.Position.Y);
+                MouseState.Position.X = event.MouseInput.X;
+                MouseState.Position.Y = event.MouseInput.Y;
+                break;
+            default:
+                break;
+        }
+    }
+    else if (event.EventType == irr::EET_KEY_INPUT_EVENT && event.KeyInput.PressedDown)
+    {
+        switch (event.KeyInput.Key)
+        {
+            case KEY_KEY_R:
+            {
+                std::list<CubeFlip> fliplist;
+                sDrawing->getCube()->Scramble(&fliplist);
+                sDrawing->getCube()->ProceedFlipSequence(&fliplist, true);
+                break;
+            }
+            case KEY_KEY_S:
+            {
+                std::list<CubeFlip> fliplist;
+                sDrawing->getCube()->Solve(&fliplist);
+                sDrawing->getCube()->ProceedFlipSequence(&fliplist, true);
+                break;
+            }
         }
     }
 

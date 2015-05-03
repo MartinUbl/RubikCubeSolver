@@ -1,17 +1,18 @@
 #include "Global.h"
 #include "bigint.h"
+#include <queue>
 #include "Rubik.h"
 #include "Drawing.h"
 
 #include <time.h>
 #include <string>
-#include <queue>
 #include <utility>
 using namespace std;
 
 RubikCube::RubikCube()
 {
-    //
+    m_progressStart = 0;
+    m_toProgress = FLIP_NONE;
 }
 
 RubikCube::~RubikCube()
@@ -28,6 +29,8 @@ CubeAtomFace* RubikCube::BuildFace(ISceneManager* scene, IVideoDriver* videoDriv
 
     CubeAtomFace* face = new CubeAtomFace();
     face->meshNode = node;
+    face->basePosition = basePosition + cubeFaceOffset[side];
+    face->baseRotation = cubeFaceRotation[side];
     face->parent = this;
 
     return face;
@@ -58,6 +61,15 @@ CubeAtom* RubikCube::BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriv
     else if (cubeOffset.Y == -1)
         atom->faces[CF_DOWN]->setColor(CL_WHITE);
 
+    /*for (int i = CF_BEGIN; i < CF_END; i++)
+    {
+        if (atom->faces[i]->color == CL_NONE)
+        {
+            atom->faces[i]->meshNode->remove();
+            atom->faces[i]->meshNode = nullptr;
+        }
+    }*/
+
     return atom;
 }
 
@@ -73,6 +85,267 @@ CubeAtom* RubikCube::GetAtom(int x, int y, int z)
 
 void RubikCube::Render()
 {
+    if (m_toProgress != FLIP_NONE && m_progressStart > 0)
+    {
+        unsigned int diff = getMSTimeDiff(m_progressStart, getMSTime());
+        float progress = ((float)diff) / 100.0f;
+
+        bool endflag = false;
+        if (progress >= 1.0f)
+        {
+            endflag = true;
+            progress = 0;
+        }
+
+        int x, y, z, dirX, dirY, dirZ, rotX, rotY, rotZ;
+        int group;
+
+        CubeAtom* at;
+        for (int i = -1; i <= 1; i++)
+        {
+            for (int j = -1; j <= 1; j++)
+            {
+                rotX = (m_toProgress % 3) == 2 ? -1 : 1;
+                rotY = (m_toProgress % 3) == 2 ? -1 : 1;
+                rotZ = (m_toProgress % 3) == 2 ? -1 : 1;
+                switch (m_toProgress)
+                {
+                    // GROUP 0
+                    case FLIP_F_P:
+                    case FLIP_F_N:
+                        x = i;
+                        y = j;
+                        z = -1;
+                        rotX = 0;
+                        rotY = 0;
+                        rotZ *= 1;
+                        dirX = rotZ;
+                        dirY = 1;
+
+                        group = 0;
+                        break;
+                    case FLIP_B_P:
+                    case FLIP_B_N:
+                        x = - i;
+                        y = j;
+                        z = 1;
+                        rotX = 0;
+                        rotY = 0;
+                        rotZ *= -1;
+                        dirX = rotZ;
+                        dirY = 1;
+
+                        group = 0;
+                        break;
+                        // GROUP 1
+                    case FLIP_L_P:
+                    case FLIP_L_N:
+                        x = -1;
+                        y = j;
+                        z = -i;
+                        rotX *= 1;
+                        rotY = 0;
+                        rotZ = 0;
+                        dirX = 1;
+                        dirY = 1;
+                        dirZ = -rotX;
+
+                        group = 1;
+                        break;
+                    case FLIP_R_P:
+                    case FLIP_R_N:
+                        x = 1;
+                        y = j;
+                        z = i;
+                        rotX *= -1;
+                        rotY = 0;
+                        rotZ = 0;
+                        dirX = 1;
+                        dirY = 1;
+                        dirZ = -rotX;
+
+                        group = 1;
+                        break;
+                    // GROUP 2
+                    case FLIP_U_P:
+                    case FLIP_U_N:
+                        x = i;
+                        y = 1;
+                        z = j;
+                        rotX = 0;
+                        rotY *= -1;
+                        rotZ = 0;
+                        dirX = 0;
+                        dirY = rotY;
+                        dirZ = 0;
+
+                        group = 2;
+                        break;
+                    case FLIP_D_P:
+                    case FLIP_D_N:
+                        x = -i;
+                        y = -1;
+                        z = j;
+                        rotX = 0;
+                        rotY *= 1;
+                        rotZ = 0;
+                        dirX = 0;
+                        dirY = -rotY;
+                        dirZ = 0;
+
+                        group = 2;
+                        break;
+                }
+
+                at = GetAtom(x, y, z);
+                for (int f = CF_BEGIN; f < CF_END; f++)
+                {
+                    CubeAtomFace* caf = at->faces[f];
+                    if (!caf->meshNode)
+                        continue;
+
+                    // !!!
+                    //progress = 1;
+
+                    // group 0 = front and back flip
+                    if (group == 0)
+                    {
+                        float baseAngle = atan(caf->basePosition.Y / caf->basePosition.X);
+                        if (x == -1)
+                            baseAngle -= PI;
+
+                        float baseDist = sqrt(caf->basePosition.X*caf->basePosition.X + caf->basePosition.Y*caf->basePosition.Y);
+                        caf->meshNode->setPosition(
+                            vector3df
+                            (
+                                cos(baseAngle - rotZ * progress*PI / 2.0f)*baseDist - dirX * progress * ATOM_SIZE / 2.0f,
+                                sin(baseAngle - rotZ * progress*PI / 2.0f)*baseDist + dirY * progress * ATOM_SIZE / 2.0f,
+                                caf->basePosition.Z
+                            )
+                        );
+
+                        caf->meshNode->setRotation(
+                            vector3df
+                            (
+                                caf->baseRotation.X - rotX * progress * 90.0f,
+                                caf->baseRotation.Y - rotY * progress * 90.0f,
+                                caf->baseRotation.Z - rotZ * progress * 90.0f
+                            )
+                        );
+                    }
+                    // group 1 = left and right flip
+                    else if (group == 1)
+                    {
+                        float baseAngle = atan(caf->basePosition.Y / caf->basePosition.Z);
+                        if (z == -1)
+                            baseAngle -= PI;
+
+                        float baseDist = sqrt(caf->basePosition.Z*caf->basePosition.Z + caf->basePosition.Y*caf->basePosition.Y);
+                        caf->meshNode->setPosition(
+                            vector3df
+                            (
+                                caf->basePosition.X,
+                                sin(baseAngle + rotX * progress*PI / 2.0f)*baseDist + dirY * progress * ATOM_SIZE / 2.0f,
+                                cos(baseAngle + rotX * progress*PI / 2.0f)*baseDist - dirZ * progress * ATOM_SIZE / 2.0f
+                            )
+                        );
+
+                        if (f == CF_RIGHT || f == CF_LEFT)
+                        {
+                            caf->meshNode->setRotation(
+                                vector3df
+                                (
+                                    caf->baseRotation.X,
+                                    caf->baseRotation.Y + (f == CF_LEFT) ? rotX : (-rotX) * progress * 90.0f,
+                                    caf->baseRotation.Z
+                                )
+                            );
+                        }
+                        else
+                        {
+                            caf->meshNode->setRotation(
+                                vector3df
+                                (
+                                    caf->baseRotation.X - rotX * progress * 90.0f,
+                                    caf->baseRotation.Y - rotY * progress * 90.0f,
+                                    caf->baseRotation.Z - rotZ * progress * 90.0f
+                                )
+                            );
+                        }
+                    }
+                    // group 2 = up and down flip
+                    else if (group == 2)
+                    {
+                        float baseAngle = atan(caf->basePosition.Z / caf->basePosition.X);
+                        if (x == -1)
+                            baseAngle -= PI;
+
+                        float baseDist = sqrt(caf->basePosition.Z*caf->basePosition.Z + caf->basePosition.X*caf->basePosition.X);
+                        caf->meshNode->setPosition(
+                            vector3df
+                                (
+                                    cos(baseAngle + rotY * progress*PI / 2.0f)*baseDist + dirX * progress * ATOM_SIZE / 4.0f,
+                                    caf->basePosition.Y,
+                                    sin(baseAngle + rotY * progress*PI / 2.0f)*baseDist + dirZ * progress * ATOM_SIZE / 4.0f
+                                )
+                            );
+
+                        if (f == CF_UP || f == CF_DOWN)
+                        {
+                            caf->meshNode->setRotation(
+                                vector3df
+                                (
+                                    caf->baseRotation.X,
+                                    caf->baseRotation.Y - rotY * progress * 90.0f,
+                                    caf->baseRotation.Z
+                                )
+                            );
+                        }
+                        else if (f == CF_RIGHT || f == CF_LEFT)
+                        {
+                            caf->meshNode->setRotation(
+                                vector3df
+                                (
+                                    caf->baseRotation.X + ((f == CF_LEFT) ? (-rotY) : (rotY)) * progress * 90.0f,
+                                    caf->baseRotation.Y,
+                                    caf->baseRotation.Z
+                                )
+                            );
+                        }
+                        else // front / back
+                        {
+                            caf->meshNode->setRotation(
+                                vector3df
+                                (
+                                    caf->baseRotation.X,
+                                    caf->baseRotation.Y - rotY * progress * 90.0f,
+                                    caf->baseRotation.Z
+                                )
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        if (endflag)
+        {
+            DoFlip(m_toProgress, true);
+
+            // set next move from queue if any
+            if (m_flipQueue.size() > 0)
+            {
+                cout << getStrForFlip(m_toProgress) << ", ";
+                m_toProgress = m_flipQueue.front();
+                m_flipQueue.pop();
+
+                m_progressStart = getMSTime();
+            }
+            else
+                m_toProgress = FLIP_NONE;
+        }
+    }
+
     /*int i, j;
 
     for (i = 0; i < 3; i++)
@@ -124,6 +397,50 @@ void RubikCube::Render()
     }*/
 }
 
+void RubikCube::Scramble(std::list<CubeFlip> *target)
+{
+    CubeFlip a;
+    int count = 20 + rand() % 10;
+    for (int i = 0; i < count; i++)
+    {
+        a = (CubeFlip)(rand() % FLIP_MAX);
+        target->push_back(a);
+    }
+}
+
+void RubikCube::ProceedFlipSequence(std::list<CubeFlip> *source, bool animate)
+{
+    if (!animate)
+    {
+        for (std::list<CubeFlip>::iterator itr = source->begin(); itr != source->end(); ++itr)
+            DoFlip(*itr, true);
+    }
+    else
+    {
+        CubeFlip fl;
+        for (std::list<CubeFlip>::iterator itr = source->begin(); itr != source->end(); ++itr)
+        {
+            fl = *itr;
+
+            if (fl % 3 == 1)
+            {
+                fl = (CubeFlip)(fl - 1);
+                m_flipQueue.push(fl);
+                cout << getStrForFlip(fl) << ", ";
+            }
+            m_flipQueue.push(fl);
+            cout << getStrForFlip(fl) << ", ";
+        }
+
+        cout << endl;
+
+        m_toProgress = m_flipQueue.front();
+        m_flipQueue.pop();
+
+        m_progressStart = getMSTime();
+    }
+}
+
 void RubikCube::BuildCube(ISceneManager* scene, IVideoDriver* videoDriver)
 {
     meshManipulator = scene->getMeshManipulator();
@@ -151,8 +468,7 @@ void RubikCube::BuildCube(ISceneManager* scene, IVideoDriver* videoDriver)
     }
 
     // randomly mess the cube
-    srand((unsigned int) time(NULL));
-    CubeFlip a;
+    /*CubeFlip a;
 
     cout << "Zamichani: ";
     for (int i = 0; i < 50; i++)
@@ -168,7 +484,7 @@ void RubikCube::BuildCube(ISceneManager* scene, IVideoDriver* videoDriver)
 
     cout << "Reseni: ";
     for (std::list<CubeFlip>::const_iterator itr = fliplist.begin(); itr != fliplist.end(); ++itr)
-        cout << getStrForFlip(*itr) << ", ";
+        cout << getStrForFlip(*itr) << ", ";*/
 }
 
 // circular swap of cube atom faces
