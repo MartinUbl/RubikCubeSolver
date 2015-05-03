@@ -84,6 +84,41 @@ CubeAtom* RubikCube::GetAtom(int x, int y, int z)
     return m_cubeAtoms[(x + 1)][(y + 1)][(z + 1)];
 }
 
+void RubikCube::CacheCube()
+{
+    CubeAtom* ca;
+
+    for (int x = 0; x <= 2; x++)
+    {
+        for (int y = 0; y <= 2; y++)
+        {
+            for (int z = 0; z <= 2; z++)
+            {
+                if (x == 1 && y == 1 && z == 1)
+                    continue;
+                ca = GetAtom(x-1, y-1, z-1);
+                if (ca == nullptr)
+                    continue;
+
+                if (z == 0)
+                    m_cubeCache[CF_FRONT][x][y] = ca->faces[CF_FRONT]->getColor();
+                else if (z == 2)
+                    m_cubeCache[CF_BACK][x][y] = ca->faces[CF_BACK]->getColor();
+
+                if (x == 2)
+                    m_cubeCache[CF_RIGHT][y][z] = ca->faces[CF_RIGHT]->getColor();
+                else if (x == 0)
+                    m_cubeCache[CF_LEFT][2-y][z] = ca->faces[CF_LEFT]->getColor();
+
+                if (y == 2)
+                    m_cubeCache[CF_UP][x][z] = ca->faces[CF_UP]->getColor();
+                else if (y == 0)
+                    m_cubeCache[CF_DOWN][x][z] = ca->faces[CF_DOWN]->getColor();
+            }
+        }
+    }
+}
+
 void RubikCube::Render()
 {
     if (m_toProgress != FLIP_NONE && m_progressStart > 0)
@@ -200,6 +235,9 @@ void RubikCube::Render()
                 }
 
                 at = GetAtom(x, y, z);
+                if (!at)
+                    continue;
+
                 for (int f = CF_BEGIN; f < CF_END; f++)
                 {
                     CubeAtomFace* caf = at->faces[f];
@@ -371,7 +409,7 @@ void RubikCube::Render()
         }
     }
 
-    /*int i, j;
+    int i, j;
 
     for (i = 0; i < 3; i++)
     {
@@ -379,7 +417,7 @@ void RubikCube::Render()
         {
             sDrawing->getDriver()->draw2DImage(m_faceMiniTexture, core::position2d<s32>(2 + 60 + i*20, 2 + 40 - j*20),
                 core::rect<s32>(0, 0, 20, 20), nullptr,
-                rubikColorMap[m_faceArray[CF_BACK][i][j]], false);
+                rubikColorMap[m_cubeCache[CF_UP][i][j]], false);
         }
     }
 
@@ -389,25 +427,25 @@ void RubikCube::Render()
         {
             sDrawing->getDriver()->draw2DImage(m_faceMiniTexture, core::position2d<s32>(2 + 40 - j * 20, 2 + 60 + i * 20),
                 core::rect<s32>(0, 0, 20, 20), nullptr,
-                rubikColorMap[m_faceArray[CF_LEFT][i][j]], false);
+                rubikColorMap[m_cubeCache[CF_LEFT][i][j]], false);
         }
         for (j = 0; j < 3; j++)
         {
             sDrawing->getDriver()->draw2DImage(m_faceMiniTexture, core::position2d<s32>(2 + 60 + i * 20, 2 + 60 + 40 - j * 20),
                 core::rect<s32>(0, 0, 20, 20), nullptr,
-                rubikColorMap[m_faceArray[CF_DOWN][i][j]], false);
+                rubikColorMap[m_cubeCache[CF_FRONT][i][j]], false);
         }
         for (j = 0; j < 3; j++)
         {
             sDrawing->getDriver()->draw2DImage(m_faceMiniTexture, core::position2d<s32>(2 + 2*60 + j * 20, 2 + 60 + 40 - i * 20),
                 core::rect<s32>(0, 0, 20, 20), nullptr,
-                rubikColorMap[m_faceArray[CF_RIGHT][i][j]], false);
+                rubikColorMap[m_cubeCache[CF_RIGHT][i][j]], false);
         }
         for (j = 0; j < 3; j++)
         {
             sDrawing->getDriver()->draw2DImage(m_faceMiniTexture, core::position2d<s32>(2 + 3*60 + 40 - i * 20, 2 + 60 + 40 - j * 20),
                 core::rect<s32>(0, 0, 20, 20), nullptr,
-                rubikColorMap[m_faceArray[CF_UP][i][j]], false);
+                rubikColorMap[m_cubeCache[CF_BACK][i][j]], false);
         }
     }
 
@@ -417,9 +455,9 @@ void RubikCube::Render()
         {
             sDrawing->getDriver()->draw2DImage(m_faceMiniTexture, core::position2d<s32>(2 + 60 + i * 20, 2 + 2*60 + j * 20),
                 core::rect<s32>(0, 0, 20, 20), nullptr,
-                rubikColorMap[m_faceArray[CF_FRONT][i][j]], false);
+                rubikColorMap[m_cubeCache[CF_DOWN][i][j]], false);
         }
-    }*/
+    }
 }
 
 void RubikCube::Scramble(std::list<CubeFlip> *target)
@@ -493,24 +531,7 @@ void RubikCube::BuildCube(ISceneManager* scene, IVideoDriver* videoDriver)
         }
     }
 
-    // randomly mess the cube
-    /*CubeFlip a;
-
-    cout << "Zamichani: ";
-    for (int i = 0; i < 50; i++)
-    {
-        a = (CubeFlip) (rand() % FLIP_MAX);
-        cout << getStrForFlip(a) << ", ";
-        DoFlip((CubeFlip)a, true);
-    }
-    cout << endl << endl;
-
-    std::list<CubeFlip> fliplist;
-    Solve(&fliplist);
-
-    cout << "Reseni: ";
-    for (std::list<CubeFlip>::const_iterator itr = fliplist.begin(); itr != fliplist.end(); ++itr)
-        cout << getStrForFlip(*itr) << ", ";*/
+    CacheCube();
 }
 
 // circular swap of cube atom faces
@@ -710,6 +731,9 @@ void RubikCube::DoFlip(CubeFlip flip, bool draw)
             break;
         }
     }
+
+    if (draw)
+        CacheCube();
 }
 
 void RubikCube::PrintOut()

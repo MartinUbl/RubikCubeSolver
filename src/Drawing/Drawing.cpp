@@ -56,12 +56,12 @@ bool Drawing::Render()
     if (!m_irrDevice->run())
         return false;
 
-    m_irrDriver->beginScene(true, true, SColor(255, 100, 140, 101));
+    m_irrDriver->beginScene(true, true, SColor(255, 120, 190, 130));
 
     m_irrScene->drawAll();
     m_cube->Render();
 
-    m_appFont->draw(L"OVLADANI\nR\t\t\t\t\trozmichat\nS\t\t\t\t\tslozit\n+ -\t\t\tzrychlit/zpomalit otaceni", rect<s32>(5, 5, 100, 100), SColor(255, 0, 0, 127));
+    m_appFont->draw(L"OVLADANI\nR\t\t\t\t\trozmichat\nS\t\t\t\t\tslozit\n+ -\t\t\tzrychlit/zpomalit otaceni", rect<s32>(5, 600 - 24*5, 100, 100), SColor(255, 0, 0, 127));
 
     stringw repstr = "Rychlost otaceni: ";
     std::string str = std::to_string(m_cube->GetFlipTiming() / 1000.0f);
@@ -69,7 +69,7 @@ bool Drawing::Render()
     repstr += str.c_str();
     repstr += " s";
 
-    m_appFont->draw(repstr, rect<s32>(5, 600 - 24, 100, 100), SColor(255, 0, 0, 127));
+    m_appFont->draw(repstr, rect<s32>(5, 600 - 24, 100, 100), SColor(255, 0, 50, 240));
 
     m_irrGui->drawAll();
 

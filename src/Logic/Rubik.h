@@ -199,6 +199,7 @@ class RubikCube
 
     private:
         CubeAtom* m_cubeAtoms[3][3][3];
+        RubikColor m_cubeCache[CF_COUNT][3][3];
         ITexture* m_faceTexture, *m_faceMiniTexture;
         unsigned char m_solveStage;
         int m_flipTiming;
@@ -210,6 +211,7 @@ class RubikCube
         void SetCubeAtom(int x, int y, int z, CubeAtom* atom);
         CubeAtom* BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriver, vector3df basePosition, vector3di cubeOffset);
         CubeAtomFace* BuildFace(ISceneManager* scene, IVideoDriver* videoDriver, CubeFace side, vector3df basePosition);
+        void CacheCube();
 
         bigint GetStateHash(bigint &state);
         void ConvertToPermutationTable(std::vector<std::string> &dstList);
