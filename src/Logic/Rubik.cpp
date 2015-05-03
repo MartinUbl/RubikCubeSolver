@@ -88,7 +88,7 @@ void RubikCube::Render()
     if (m_toProgress != FLIP_NONE && m_progressStart > 0)
     {
         unsigned int diff = getMSTimeDiff(m_progressStart, getMSTime());
-        float progress = ((float)diff) / 100.0f;
+        float progress = ((float)diff) / 500.0f;
 
         bool endflag = false;
         if (progress >= 1.0f)
@@ -106,8 +106,9 @@ void RubikCube::Render()
             for (int j = -1; j <= 1; j++)
             {
                 rotX = (m_toProgress % 3) == 2 ? -1 : 1;
-                rotY = (m_toProgress % 3) == 2 ? -1 : 1;
-                rotZ = (m_toProgress % 3) == 2 ? -1 : 1;
+                rotY = rotX;
+                rotZ = rotX;
+
                 switch (m_toProgress)
                 {
                     // GROUP 0
@@ -137,7 +138,7 @@ void RubikCube::Render()
 
                         group = 0;
                         break;
-                        // GROUP 1
+                    // GROUP 1
                     case FLIP_L_P:
                     case FLIP_L_N:
                         x = -1;
@@ -203,9 +204,10 @@ void RubikCube::Render()
                     CubeAtomFace* caf = at->faces[f];
                     if (!caf->meshNode)
                         continue;
+                    bool black = caf->color == CL_NONE;
 
                     // !!!
-                    //progress = 1;
+                    //progress = 0;
 
                     // group 0 = front and back flip
                     if (group == 0)
@@ -214,15 +216,24 @@ void RubikCube::Render()
                         if (x == -1)
                             baseAngle -= PI;
 
+                        // otherwise glitches would appear
+                        if (x == 0 && black && f == CF_LEFT)
+                            baseAngle += PI;
+
                         float baseDist = sqrt(caf->basePosition.X*caf->basePosition.X + caf->basePosition.Y*caf->basePosition.Y);
-                        caf->meshNode->setPosition(
-                            vector3df
-                            (
-                                cos(baseAngle - rotZ * progress*PI / 2.0f)*baseDist - dirX * progress * ATOM_SIZE / 2.0f,
-                                sin(baseAngle - rotZ * progress*PI / 2.0f)*baseDist + dirY * progress * ATOM_SIZE / 2.0f,
-                                caf->basePosition.Z
-                            )
-                        );
+
+                        // do not move center
+                        if (x != 0 || y != 0)
+                        {
+                            caf->meshNode->setPosition(
+                                vector3df
+                                (
+                                    cos(baseAngle - rotZ * progress*PI / 2.0f)*baseDist - dirX * progress * ATOM_SIZE / 2.0f,
+                                    sin(baseAngle - rotZ * progress*PI / 2.0f)*baseDist + dirY * progress * ATOM_SIZE / 2.0f,
+                                    caf->basePosition.Z
+                                )
+                            );
+                        }
 
                         caf->meshNode->setRotation(
                             vector3df
@@ -240,15 +251,23 @@ void RubikCube::Render()
                         if (z == -1)
                             baseAngle -= PI;
 
+                        // otherwise glitches would appear
+                        if (z == 0 && black && f == CF_FRONT)
+                            baseAngle += PI;
+
                         float baseDist = sqrt(caf->basePosition.Z*caf->basePosition.Z + caf->basePosition.Y*caf->basePosition.Y);
-                        caf->meshNode->setPosition(
-                            vector3df
-                            (
-                                caf->basePosition.X,
-                                sin(baseAngle + rotX * progress*PI / 2.0f)*baseDist + dirY * progress * ATOM_SIZE / 2.0f,
-                                cos(baseAngle + rotX * progress*PI / 2.0f)*baseDist - dirZ * progress * ATOM_SIZE / 2.0f
-                            )
-                        );
+                        // do not move center
+                        if (z != 0 || y != 0)
+                        {
+                            caf->meshNode->setPosition(
+                                vector3df
+                                (
+                                    caf->basePosition.X,
+                                    sin(baseAngle + rotX * progress*PI / 2.0f)*baseDist + dirY * progress * ATOM_SIZE / 2.0f,
+                                    cos(baseAngle + rotX * progress*PI / 2.0f)*baseDist - dirZ * progress * ATOM_SIZE / 2.0f
+                                )
+                            );
+                        }
 
                         if (f == CF_RIGHT || f == CF_LEFT)
                         {
@@ -256,7 +275,7 @@ void RubikCube::Render()
                                 vector3df
                                 (
                                     caf->baseRotation.X,
-                                    caf->baseRotation.Y + (f == CF_LEFT) ? rotX : (-rotX) * progress * 90.0f,
+                                    caf->baseRotation.Y + (((f == CF_LEFT) ? (rotX) : (-rotX)) * progress * 90.0f),
                                     caf->baseRotation.Z
                                 )
                             );
@@ -281,14 +300,19 @@ void RubikCube::Render()
                             baseAngle -= PI;
 
                         float baseDist = sqrt(caf->basePosition.Z*caf->basePosition.Z + caf->basePosition.X*caf->basePosition.X);
-                        caf->meshNode->setPosition(
-                            vector3df
-                                (
-                                    cos(baseAngle + rotY * progress*PI / 2.0f)*baseDist + dirX * progress * ATOM_SIZE / 4.0f,
-                                    caf->basePosition.Y,
-                                    sin(baseAngle + rotY * progress*PI / 2.0f)*baseDist + dirZ * progress * ATOM_SIZE / 4.0f
-                                )
-                            );
+
+                        // do not move center
+                        if (x != 0 || z != 0)
+                        {
+                            caf->meshNode->setPosition(
+                                vector3df
+                                    (
+                                        cos(baseAngle + rotY * progress*PI / 2.0f)*baseDist + dirX * progress * ATOM_SIZE / 4.0f,
+                                        caf->basePosition.Y,
+                                        sin(baseAngle + rotY * progress*PI / 2.0f)*baseDist + dirZ * progress * ATOM_SIZE / 4.0f
+                                    )
+                                );
+                        }
 
                         if (f == CF_UP || f == CF_DOWN)
                         {
