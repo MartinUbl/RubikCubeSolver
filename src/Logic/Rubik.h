@@ -7,6 +7,8 @@
 
 static IMeshManipulator* meshManipulator = nullptr;
 
+#define STATE_STRING_LENGTH 20
+
 enum RubikColor
 {
     CL_RED = 0,
@@ -43,6 +45,18 @@ enum CubeFace
     CF_BEGIN = CF_UP,
     CF_END = CF_LEFT + 1,
     CF_COUNT = CF_END
+};
+
+static char rubikFaceCode[] = { 'U', 'D', 'B', 'F', 'R', 'L' };
+
+// this will then depend on user input (these are default values)
+static CubeFace colorFaceMap[] = {
+    /* CL_RED */    CF_UP,
+    /* CL_GREEN */  CF_FRONT,
+    /* CL_BLUE */   CF_LEFT,
+    /* CL_YELLOW */ CF_RIGHT,
+    /* CL_WHITE */  CF_DOWN,
+    /* CL_ORANGE */ CF_BACK
 };
 
 static vector3df cubeFaceOffset[] = {
@@ -90,44 +104,53 @@ struct CubeAtom
 // quarter-turn metric flips
 enum CubeFlip
 {
-    FLIP_U_P = 0,
-    FLIP_U_N = 1,
-    FLIP_D_P = 2,
-    FLIP_D_N = 3,
-    FLIP_F_P = 4,
-    FLIP_F_N = 5,
-    FLIP_B_P = 6,
-    FLIP_B_N = 7,
-    FLIP_L_P = 8,
-    FLIP_L_N = 9,
-    FLIP_R_P = 10,
-    FLIP_R_N = 11,
+    FLIP_R_P = 0,
+    FLIP_R_2 = 1,
+    FLIP_R_N = 2,
 
-    FLIP_MAX = FLIP_R_N + 1,
+    FLIP_L_P = 3,
+    FLIP_L_2 = 4,
+    FLIP_L_N = 5,
+
+    FLIP_B_P = 6,
+    FLIP_B_2 = 7,
+    FLIP_B_N = 8,
+
+    FLIP_F_P = 9,
+    FLIP_F_2 = 10,
+    FLIP_F_N = 11,
+
+    FLIP_D_P = 12,
+    FLIP_D_2 = 13,
+    FLIP_D_N = 14,
+
+    FLIP_U_P = 15,
+    FLIP_U_2 = 16,
+    FLIP_U_N = 17,
+
+    FLIP_MAX = FLIP_U_N + 1,
+    FLIP_BEGIN = FLIP_R_P,
 
     FLIP_NONE       // used just as "flag", not real turn
 };
 
-static char* cubeFlipStr[] = {
-    "U",
-    "U-",
-    "D",
-    "D-",
-    "F",
-    "F-",
-    "B",
-    "B-",
-    "L",
-    "L-",
-    "R",
-    "R-"
+static char* cubeFlipStr[] = { "R+", "R2", "R-", "L+", "L2", "L-", "B+", "B2", "B-", "F+", "F2", "F-", "D+", "D2", "D-", "U+", "U2", "U-" };
+
+static int stageAllowedFlips[] = {
+    1 << FLIP_U_P | 1 << FLIP_D_P | 1 << FLIP_F_P | 1 << FLIP_B_P | 1 << FLIP_L_P | 1 << FLIP_R_P | 1 << FLIP_U_N | 1 << FLIP_D_N | 1 << FLIP_F_N | 1 << FLIP_B_N | 1 << FLIP_L_N | 1 << FLIP_R_N,
+    1 << FLIP_U_P | 1 << FLIP_D_P | 1 << FLIP_F_2 | 1 << FLIP_B_2 | 1 << FLIP_L_P | 1 << FLIP_R_P | 1 << FLIP_U_N | 1 << FLIP_D_N | 1 << FLIP_L_N | 1 << FLIP_R_N,
+    1 << FLIP_U_2 | 1 << FLIP_D_2 | 1 << FLIP_F_2 | 1 << FLIP_B_2 | 1 << FLIP_L_P | 1 << FLIP_R_P | 1 << FLIP_L_N | 1 << FLIP_R_N,
+    1 << FLIP_U_2 | 1 << FLIP_D_2 | 1 << FLIP_F_2 | 1 << FLIP_B_2 | 1 << FLIP_L_2 | 1 << FLIP_R_2,
 };
 
-// retrieves the flip type, that reverses supplied one
-static CubeFlip getBackFlip(CubeFlip src)
-{
-    return (CubeFlip)((1 - (src % 2)) + 2*(src / 2));
-}
+static int flipCubeEffect[][8] = {
+    { 0, 1, 2, 3, 0, 1, 2, 3 },    // U
+    { 4, 7, 6, 5, 4, 5, 6, 7 },    // D
+    { 0, 9, 4, 8, 0, 3, 5, 4 },    // F
+    { 2, 10, 6, 11, 2, 1, 7, 6 },  // B
+    { 3, 11, 7, 9, 3, 2, 6, 5 },   // L
+    { 1, 8, 5, 10, 1, 0, 4, 7 },   // R
+};
 
 // retrieves flip for supplied string identifier
 static CubeFlip getFlipForStr(char* str)
@@ -161,23 +184,26 @@ class RubikCube
 
         void DoFlip(CubeFlip flip, bool draw);
 
-        bool IsSolved();
+        void Solve(std::list<CubeFlip> *target);
 
         void PrintOut();
 
     private:
         CubeAtom* m_cubeAtoms[3][3][3];
-        RubikColor m_faceArray[CF_COUNT][3][3];
         ITexture* m_faceTexture, *m_faceMiniTexture;
+        unsigned char m_solveStage;
 
         void SetCubeAtom(int x, int y, int z, CubeAtom* atom);
-        void CacheCube();
-        void RestoreCubeCache();
         CubeAtom* BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriver, vector3df basePosition, vector3di cubeOffset);
         CubeAtomFace* BuildFace(ISceneManager* scene, IVideoDriver* videoDriver, CubeFace side, vector3df basePosition);
 
-        void CircularSwap(RubikColor *cl1, RubikColor *cl2, RubikColor *cl3, RubikColor *cl4);
-        void ReverseCircularSwap(RubikColor *cl1, RubikColor *cl2, RubikColor *cl3, RubikColor *cl4);
+        bigint GetStateHash(bigint &state);
+        void ConvertToPermutationTable(std::vector<std::string> &dstList);
+        char* GetEdgeCode(int x, int y, int z, CubeFace frst, CubeFace scnd);
+        char* GetCornerCode(int x, int y, int z, CubeFace frst, CubeFace scnd, CubeFace thrd);
+        bigint DoLinearFlip(int move, bigint state);
+
+        void AtomCircularSwap(int ax, int ay, int az, CubeFace a, int bx, int by, int bz, CubeFace b, int cx, int cy, int cz, CubeFace c, int dx, int dy, int dz, CubeFace d, bool reverse = false);
 };
 
 #endif

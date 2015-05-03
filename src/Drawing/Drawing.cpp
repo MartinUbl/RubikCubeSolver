@@ -1,4 +1,5 @@
 #include "Global.h"
+#include "bigint.h"
 #include "Rubik.h"
 #include "Drawing.h"
 
