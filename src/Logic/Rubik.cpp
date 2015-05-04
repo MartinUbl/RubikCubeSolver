@@ -3,10 +3,12 @@
 #include <queue>
 #include "Rubik.h"
 #include "Drawing.h"
+#include "Application.h"
 
 #include <time.h>
 #include <string>
 #include <utility>
+#include <fstream>
 using namespace std;
 
 RubikCube::RubikCube()
@@ -21,17 +23,28 @@ RubikCube::~RubikCube()
     //
 }
 
+void CubeAtomFace::setColor(RubikColor cl)
+{
+    if (sApplication->IsGraphicMode())
+        meshManipulator->setVertexColors(meshNode->getMesh(), rubikColorMap[cl]);
+    color = cl;
+}
+
 CubeAtomFace* RubikCube::BuildFace(ISceneManager* scene, IVideoDriver* videoDriver, CubeFace side, vector3df basePosition)
 {
-    IMeshSceneNode* node;
-    IMesh* mesh = scene->getGeometryCreator()->createPlaneMesh(dimension2d<f32>(ATOM_SIZE, ATOM_SIZE), dimension2d<u32>(1, 1), nullptr);
-    node = scene->addMeshSceneNode(mesh, nullptr, -1, basePosition + cubeFaceOffset[side], cubeFaceRotation[side]);
-    node->setMaterialTexture(0, m_faceTexture);
-
     CubeAtomFace* face = new CubeAtomFace();
-    face->meshNode = node;
-    face->basePosition = basePosition + cubeFaceOffset[side];
-    face->baseRotation = cubeFaceRotation[side];
+
+    if (sApplication->IsGraphicMode())
+    {
+        IMeshSceneNode* node;
+        IMesh* mesh = scene->getGeometryCreator()->createPlaneMesh(dimension2d<f32>(ATOM_SIZE, ATOM_SIZE), dimension2d<u32>(1, 1), nullptr);
+        node = scene->addMeshSceneNode(mesh, nullptr, -1, basePosition + cubeFaceOffset[side], cubeFaceRotation[side]);
+        node->setMaterialTexture(0, m_faceTexture);
+        face->meshNode = node;
+        face->basePosition = basePosition + cubeFaceOffset[side];
+        face->baseRotation = cubeFaceRotation[side];
+    }
+
     face->parent = this;
 
     return face;
@@ -61,15 +74,6 @@ CubeAtom* RubikCube::BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriv
         atom->faces[CF_UP]->setColor(CL_RED);
     else if (cubeOffset.Y == -1)
         atom->faces[CF_DOWN]->setColor(CL_WHITE);
-
-    /*for (int i = CF_BEGIN; i < CF_END; i++)
-    {
-        if (atom->faces[i]->color == CL_NONE)
-        {
-            atom->faces[i]->meshNode->remove();
-            atom->faces[i]->meshNode = nullptr;
-        }
-    }*/
 
     return atom;
 }
@@ -119,8 +123,47 @@ void RubikCube::CacheCube()
     }
 }
 
+void RubikCube::RestoreCacheCube()
+{
+    CubeAtom* ca;
+
+    for (int x = 0; x <= 2; x++)
+    {
+        for (int y = 0; y <= 2; y++)
+        {
+            for (int z = 0; z <= 2; z++)
+            {
+                if (x == 1 && y == 1 && z == 1)
+                    continue;
+                ca = GetAtom(x - 1, y - 1, z - 1);
+                if (ca == nullptr)
+                    continue;
+
+                if (z == 0)
+                    ca->faces[CF_FRONT]->setColor(m_cubeCache[CF_FRONT][x][y]);
+                else if (z == 2)
+                    ca->faces[CF_BACK]->setColor(m_cubeCache[CF_BACK][x][y]);
+
+                if (x == 2)
+                    ca->faces[CF_RIGHT]->setColor(m_cubeCache[CF_RIGHT][y][z]);
+                else if (x == 0)
+                    ca->faces[CF_LEFT]->setColor(m_cubeCache[CF_LEFT][2 - y][z]);
+
+                if (y == 2)
+                    ca->faces[CF_UP]->setColor(m_cubeCache[CF_UP][x][z]);
+                else if (y == 0)
+                    ca->faces[CF_DOWN]->setColor(m_cubeCache[CF_DOWN][x][z]);
+            }
+        }
+    }
+}
+
 void RubikCube::Render()
 {
+    // no rendering in nogui mode
+    if (!sApplication->IsGraphicMode())
+        return;
+
     if (m_toProgress != FLIP_NONE && m_progressStart > 0)
     {
         unsigned int diff = getMSTimeDiff(m_progressStart, getMSTime());
@@ -507,10 +550,13 @@ void RubikCube::ProceedFlipSequence(std::list<CubeFlip> *source, bool animate)
 
 void RubikCube::BuildCube(ISceneManager* scene, IVideoDriver* videoDriver)
 {
-    meshManipulator = scene->getMeshManipulator();
+    if (sApplication->IsGraphicMode())
+    {
+        meshManipulator = scene->getMeshManipulator();
 
-    m_faceTexture = videoDriver->getTexture("../data/face.bmp");
-    m_faceMiniTexture = videoDriver->getTexture("../data/mini_face.bmp");
+        m_faceTexture = videoDriver->getTexture("../data/face.bmp");
+        m_faceMiniTexture = videoDriver->getTexture("../data/mini_face.bmp");
+    }
 
     CubeAtom* tmp;
 
@@ -971,10 +1017,19 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
         // goal state. If it's not found, permutate it (in case of edge atom, just switch UF to FU, etc.),
         // and verify that again - it has to be there now, otherwise it's error in preformatter, and we got
         // another equivalence group of states, thus no solution
+        int limit = atom.length() + 1;
         while ((currentState.d[i] = find(goal, goal + 20, atom) - goal) == STATE_STRING_LENGTH)
         {
             atom = atom.substr(1) + atom[0];
             currentState.d[i + STATE_STRING_LENGTH]++;
+            limit--;
+
+            // no permutation of expected input found - there's no solution
+            if (limit == 0)
+            {
+                target->clear();
+                return;
+            }
         }
     }
 
@@ -1019,6 +1074,14 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
         // run bidirectional BFS
         while (true)
         {
+            // queue is empty = there are no connections between two states
+            // (the user may have entered odd permutation of faces, and that cannot be solved)
+            if (q.empty())
+            {
+                target->clear();
+                return;
+            }
+
             // get state from queue
             bigint currState = q.front();
             q.pop();
@@ -1105,4 +1168,208 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
     }
 
     //
+}
+
+bool RubikCube::LoadFromFile(char* filename)
+{
+    std::ifstream f(filename);
+    if (f.fail() || !f.is_open())
+    {
+        cerr << "File " << filename << " does not exist." << endl;
+        return false;
+    }
+
+    // stage one - read all non-empty lines, that does not start with hash mark (that's comment)
+    std::vector<std::string> lines;
+    std::string line;
+    while (!f.eof() && getline(f, line))
+    {
+        if (line.length() > 0 && line.at(0) != '#')
+            lines.push_back(std::string(line));
+    }
+
+    // now the only valid strings, that should be present are:
+    // 1) at first 3 lines, there should be definition of spaces-preceded upper side
+    // 2) at next 3 lines, there should be definition of faces L (left), F (front), R (right) and B (back)
+    // 3) at next 3 lines, there should be definition of spaces-preceded down side
+
+    // so there should be 9 lines in total, but to provide more precise error message,
+    // check before every action
+
+    if (lines.size() == 0)
+    {
+        cerr << "Invalid input file - the file " << filename << " is empty!" << endl;
+        return false;
+    }
+
+    // first three lines should contain 6 characters (three spaces, and three letter definitions)
+    char c;
+    RubikColor rc;
+
+    // load upper side
+    for (int i = 0; i < 3; i++)
+    {
+        line = lines[i];
+        // exactly 6 characters long, uses 3 spaces as indenting
+        if (line.length() != 6 || line.at(0) != ' ' || line.at(1) != ' ' || line.at(2) != ' ')
+        {
+            cerr << "Invalid definition of cube upper side - make sure you used 3 spaces, and 3 valid characters" << endl;
+            return false;
+        }
+
+        // load color char by char
+        for (int j = 0; j < 3; j++)
+        {
+            c = line.at(3 + j);
+            rc = getColorForCode(c);
+            // if no color with this code found, report error
+            if (rc == CL_NONE)
+            {
+                cerr << "Invalid color code " << c << " in upper side definition" << endl;
+                return false;
+            }
+
+            // save to cache
+            m_cubeCache[CF_UP][j][2-i] = rc;
+        }
+    }
+
+    // the next 3 lines consist of 4 sides definition, so load them one by one
+    for (int i = 0; i < 3; i++)
+    {
+        line = lines[i+3];
+        // they have to be exactly 12 characters long (3 for each of 4 sides)
+        if (line.length() != 12)
+        {
+            cerr << "Invalid definition of cube left+front+right+back side - make sure you used 12 valid characters" << endl;
+            return false;
+        }
+
+        // load left side
+        for (int j = 0; j < 3; j++)
+        {
+            c = line.at(j);
+            rc = getColorForCode(c);
+            if (rc == CL_NONE)
+            {
+                cerr << "Invalid color code " << c << " in left side definition" << endl;
+                return false;
+            }
+
+            m_cubeCache[CF_LEFT][i][2-j] = rc;
+        }
+
+        // front side
+        for (int j = 0; j < 3; j++)
+        {
+            c = line.at(j + 3);
+            rc = getColorForCode(c);
+            if (rc == CL_NONE)
+            {
+                cerr << "Invalid color code " << c << " in front side definition" << endl;
+                return false;
+            }
+
+            m_cubeCache[CF_FRONT][j][2-i] = rc;
+        }
+
+        // right side
+        for (int j = 0; j < 3; j++)
+        {
+            c = line.at(j + 6);
+            rc = getColorForCode(c);
+            if (rc == CL_NONE)
+            {
+                cerr << "Invalid color code " << c << " in right side definition" << endl;
+                return false;
+            }
+
+            m_cubeCache[CF_RIGHT][2-i][j] = rc;
+        }
+
+        // back side
+        for (int j = 0; j < 3; j++)
+        {
+            c = line.at(j + 9);
+            rc = getColorForCode(c);
+            if (rc == CL_NONE)
+            {
+                cerr << "Invalid color code " << c << " in back side definition" << endl;
+                return false;
+            }
+
+            m_cubeCache[CF_BACK][2-j][2-i] = rc;
+        }
+    }
+
+    // and finally load down side
+    for (int i = 0; i < 3; i++)
+    {
+        line = lines[i+6];
+        if (line.length() != 6 || line.at(0) != ' ' || line.at(1) != ' ' || line.at(2) != ' ')
+        {
+            cerr << "Invalid definition of cube down side - make sure you used 3 spaces, and 3 valid characters" << endl;
+            return false;
+        }
+
+        for (int j = 0; j < 3; j++)
+        {
+            c = line.at(3 + j);
+            rc = getColorForCode(c);
+            if (rc == CL_NONE)
+            {
+                cerr << "Invalid color code " << c << " in down side definition" << endl;
+                return false;
+            }
+
+            m_cubeCache[CF_DOWN][j][i] = rc;
+        }
+    }
+
+    // check color frequency - there has to be 9 of every color
+    int counter[CL_COUNT];
+    // put zeros at start
+    for (int i = 0; i < CL_COUNT; i++)
+        counter[i] = 0;
+    // count them all
+    for (int i = 0; i < CF_COUNT; i++)
+        for (int j = 0; j < 3; j++)
+            for (int k = 0; k < 3; k++)
+                counter[m_cubeCache[i][j][k]]++;
+
+    // go through all counters and determine counts
+    for (int i = 0; i < CL_COUNT; i++)
+    {
+        if (counter[i] != 9)
+        {
+            cerr << "Invalid cube definition - there are " << counter[i] << " occurencies of " << rubikColorCode[i] << " color, but there should be 9!" << endl;
+            return false;
+        }
+    }
+
+    // now check, if all side centers are distinct - side centers are constant elements in rubik's cube,
+    // and they have to be unique (one side = one color)
+
+    // reuse counter array - after this, there should be 10 of every color
+    for (int i = 0; i < CF_COUNT; i++)
+        counter[m_cubeCache[i][1][1]]++;
+
+    // go through all counters and check counts
+    for (int i = 0; i < CL_COUNT; i++)
+    {
+        if (counter[i] < 10)
+        {
+            cerr << "Invalid cube definition - there is no occurence of " << rubikColorCode[i] << " color center face!" << endl;
+            return false;
+        }
+    }
+
+    // now when everything seems valid (at least from basic point of view), proceed to propagate cache to cube itself
+    RestoreCacheCube();
+
+    // set cube faces and their colors
+    for (int i = 0; i < CF_COUNT; i++)
+        colorFaceMap[m_cubeCache[i][1][1]] = (CubeFace)i;
+
+    return true;
 }

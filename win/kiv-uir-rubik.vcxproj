@@ -64,6 +64,7 @@
       <AdditionalIncludeDirectories>C:\Data\Dev\irrlicht\include;../src/System;../src/Logic;../src/Drawing;../src/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>None</DebugInformationFormat>
       <WholeProgramOptimization>true</WholeProgramOptimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

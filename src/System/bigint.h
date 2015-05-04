@@ -1,3 +1,6 @@
+#ifndef RUBIK_BIGINT_H
+#define RUBIK_BIGINT_H
+
 #include <vector>
 #include <string>
 using namespace std;
@@ -85,3 +88,5 @@ struct bigint
         memcpy(d, a.d, sizeof(int)*size);
     }
 };
+
+#endif

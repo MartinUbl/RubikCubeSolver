@@ -1,6 +1,9 @@
 #ifndef RUBIK_RUBIK_H
 #define RUBIK_RUBIK_H
 
+#include <queue>
+#include "bigint.h"
+
 #define CUBE_SIZE 18.0f
 #define ATOM_SIZE CUBE_SIZE/3.0f
 #define ATOM_SPACING 0.2f
@@ -19,7 +22,8 @@ enum RubikColor
     CL_WHITE = 4,
     CL_ORANGE = 5,
 
-    CL_NONE = 6
+    CL_NONE = 6,
+    CL_COUNT = 6
 };
 
 static SColor rubikColorMap[] = {
@@ -33,6 +37,14 @@ static SColor rubikColorMap[] = {
 };
 
 static char rubikColorCode[] = { 'R', 'G', 'B', 'Y', 'W', 'O', '-' };
+
+static RubikColor getColorForCode(char code)
+{
+    for (int i = 0; i < CL_COUNT; i++)
+        if (code == rubikColorCode[i])
+            return (RubikColor)i;
+    return CL_NONE;
+}
 
 enum CubeFace
 {
@@ -88,15 +100,8 @@ struct CubeAtomFace
     RubikColor color;
     RubikCube* parent;
 
-    void setColor(RubikColor cl)
-    {
-        meshManipulator->setVertexColors(meshNode->getMesh(), rubikColorMap[cl]);
-        color = cl;
-    }
-    RubikColor getColor()
-    {
-        return color;
-    }
+    void setColor(RubikColor cl);
+    RubikColor getColor() { return color; }
 };
 
 struct CubeAtom
@@ -174,11 +179,17 @@ static char* getStrForFlip(CubeFlip fl)
     return nullptr;
 }
 
+#include "Singleton.h"
+
+#define sCube Singleton<RubikCube>::instance()
+
 class RubikCube
 {
+    friend class Singleton<RubikCube>;
     public:
-        RubikCube();
         ~RubikCube();
+
+        bool LoadFromFile(char* filename);
 
         void Render();
 
@@ -198,6 +209,8 @@ class RubikCube
         int GetFlipTiming() { return m_flipTiming; };
 
     private:
+        RubikCube();
+
         CubeAtom* m_cubeAtoms[3][3][3];
         RubikColor m_cubeCache[CF_COUNT][3][3];
         ITexture* m_faceTexture, *m_faceMiniTexture;
@@ -212,6 +225,7 @@ class RubikCube
         CubeAtom* BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriver, vector3df basePosition, vector3di cubeOffset);
         CubeAtomFace* BuildFace(ISceneManager* scene, IVideoDriver* videoDriver, CubeFace side, vector3df basePosition);
         void CacheCube();
+        void RestoreCacheCube();
 
         bigint GetStateHash(bigint &state);
         void ConvertToPermutationTable(std::vector<std::string> &dstList);

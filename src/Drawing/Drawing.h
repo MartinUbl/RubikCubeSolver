@@ -38,7 +38,6 @@ class Drawing
 
         IrrlichtDevice* getDevice() { return m_irrDevice; };
         IVideoDriver* getDriver() { return m_irrDriver; };
-        RubikCube* getCube() { return m_cube; };
 
         void mouseMoveCallback(int deltaX, int deltaY);
 
@@ -55,8 +54,6 @@ class Drawing
 
         ICameraSceneNode* m_mainCamera;
         float m_cameraAngleX, m_cameraAngleY;
-
-        RubikCube* m_cube;
 };
 
 #endif

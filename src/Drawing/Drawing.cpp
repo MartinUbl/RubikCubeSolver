@@ -1,6 +1,5 @@
 #include "Global.h"
 #include "bigint.h"
-#include <queue>
 #include "Rubik.h"
 #include "Drawing.h"
 
@@ -39,8 +38,7 @@ bool Drawing::Init()
 
     m_irrScene->addLightSceneNode(m_mainCamera);
 
-    m_cube = new RubikCube();
-    m_cube->BuildCube(m_irrScene, m_irrDriver);
+    sCube->BuildCube(m_irrScene, m_irrDriver);
 
     m_appFont = m_irrGui->getFont("../data/appfont.png");
     m_appFont->setKerningWidth(-3);
@@ -59,12 +57,12 @@ bool Drawing::Render()
     m_irrDriver->beginScene(true, true, SColor(255, 120, 190, 130));
 
     m_irrScene->drawAll();
-    m_cube->Render();
+    sCube->Render();
 
-    m_appFont->draw(L"OVLADANI\nR\t\t\t\t\trozmichat\nS\t\t\t\t\tslozit\n+ -\t\t\tzrychlit/zpomalit otaceni", rect<s32>(5, 600 - 24*5, 100, 100), SColor(255, 0, 0, 127));
+    m_appFont->draw(L"CONTROL\nR\t\t\t\t\tmix up the cube\nS\t\t\t\t\tsolve\n+ -\t\t\tspeed up/down flips", rect<s32>(5, 600 - 24*5, 100, 100), SColor(255, 0, 0, 127));
 
-    stringw repstr = "Rychlost otaceni: ";
-    std::string str = std::to_string(m_cube->GetFlipTiming() / 1000.0f);
+    stringw repstr = "Flipping speed: ";
+    std::string str = std::to_string(sCube->GetFlipTiming() / 1000.0f);
     str.erase(str.find_last_not_of('0') + 1, std::string::npos);
     repstr += str.c_str();
     repstr += " s";
@@ -122,34 +120,45 @@ bool EventReceiver::OnEvent(const SEvent& event)
         {
             case KEY_KEY_R:
             {
-                cout << "Nahodne rozmichavam kostku:" << endl;
+                cout << "Randomly scrambling cube:" << endl;
                 std::list<CubeFlip> fliplist;
-                sDrawing->getCube()->Scramble(&fliplist);
-                sDrawing->getCube()->ProceedFlipSequence(&fliplist, true);
+                sCube->Scramble(&fliplist);
+                sCube->ProceedFlipSequence(&fliplist, true);
                 break;
             }
             case KEY_KEY_S:
             {
-                cout << "Hledam reseni..." << endl;
+                cout << "Finding solution..." << endl;
                 std::list<CubeFlip> fliplist;
-                sDrawing->getCube()->Solve(&fliplist);
-                cout << "Resim kostku:" << endl;
-                sDrawing->getCube()->ProceedFlipSequence(&fliplist, true);
+                sCube->Solve(&fliplist);
+                if (fliplist.empty())
+                {
+                    cout << "No solution found" << endl;
+                }
+                else
+                {
+                    cout << "Solving cube:" << endl;
+                    sCube->ProceedFlipSequence(&fliplist, true);
+                }
                 break;
             }
             case KEY_MINUS:
             case KEY_SUBTRACT:
             {
-                sDrawing->getCube()->UpdateFlipTiming(+100);
+                sCube->UpdateFlipTiming(+100);
                 break;
             }
             case KEY_PLUS:
             case KEY_ADD:
             {
-                sDrawing->getCube()->UpdateFlipTiming(-100);
+                sCube->UpdateFlipTiming(-100);
                 break;
             }
         }
+    }
+    else if (event.EventType == irr::EET_LOG_TEXT_EVENT)
+    {
+        return true;
     }
 
     return false;
