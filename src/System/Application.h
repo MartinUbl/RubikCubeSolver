@@ -19,6 +19,7 @@ class Application
         Application();
 
         bool m_graphicMode;
+        bool m_quickMode;
 };
 
 #define sApplication Singleton<Application>::instance()

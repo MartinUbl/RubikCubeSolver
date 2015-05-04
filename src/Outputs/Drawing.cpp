@@ -120,7 +120,7 @@ bool EventReceiver::OnEvent(const SEvent& event)
         {
             case KEY_KEY_R:
             {
-                cout << "Randomly scrambling cube:" << endl;
+                cout << "Randomly mixing up cube:" << endl;
                 std::list<CubeFlip> fliplist;
                 sCube->Scramble(&fliplist);
                 sCube->ProceedFlipSequence(&fliplist, true);

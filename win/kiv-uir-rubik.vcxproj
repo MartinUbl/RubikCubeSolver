@@ -78,6 +78,7 @@
     <ClCompile Include="..\src\Outputs\Console.cpp" />
     <ClCompile Include="..\src\Outputs\Drawing.cpp" />
     <ClCompile Include="..\src\Logic\Rubik.cpp" />
+    <ClCompile Include="..\src\Outputs\Quick.cpp" />
     <ClCompile Include="..\src\System\Application.cpp" />
     <ClCompile Include="..\src\System\main.cpp" />
   </ItemGroup>
@@ -85,6 +86,7 @@
     <ClInclude Include="..\src\Outputs\Console.h" />
     <ClInclude Include="..\src\Outputs\Drawing.h" />
     <ClInclude Include="..\src\Logic\Rubik.h" />
+    <ClInclude Include="..\src\Outputs\Quick.h" />
     <ClInclude Include="..\src\System\Application.h" />
     <ClInclude Include="..\src\System\bigint.h" />
     <ClInclude Include="..\src\System\Global.h" />

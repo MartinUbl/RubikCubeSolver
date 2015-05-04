@@ -2,6 +2,7 @@
 #include "Application.h"
 #include "Drawing.h"
 #include "Console.h"
+#include "Quick.h"
 #include "Rubik.h"
 
 #include <ctime>
@@ -89,6 +90,7 @@ bool Application::Init(int argc, char** argv)
     cout << endl;
 
     m_graphicMode = !nogui && !quick;
+    m_quickMode = quick;
 
     srand((unsigned int)time(NULL));
 
@@ -98,7 +100,7 @@ bool Application::Init(int argc, char** argv)
         if (!sDrawing->Init())
             return false;
     }
-    else if (!quick)
+    else if (!m_quickMode)
     {
         // init console gui
         if (!sConsole->Init())
@@ -107,8 +109,11 @@ bool Application::Init(int argc, char** argv)
     else
     {
         // init quicksolver
+        if (!sQuickHandler->Init(infile, outfile))
+            return false;
     }
 
+    // load cube if specified input file
     if (infile.length() > 0)
         sCube->LoadFromFile((char*)infile.c_str());
 
@@ -137,10 +142,15 @@ int Application::Run()
             }
         }
     }
-    else
+    else if (!m_quickMode)
     {
         // does not run in a loop - retains commands from stdin, etc.
         sConsole->Run();
+    }
+    else
+    {
+        // also does not run in a loop - just solves input, puts results into file and closes
+        sQuickHandler->Run();
     }
 
     return 0;
