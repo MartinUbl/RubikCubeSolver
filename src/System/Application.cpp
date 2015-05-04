@@ -1,6 +1,7 @@
 #include "Global.h"
 #include "Application.h"
 #include "Drawing.h"
+#include "Console.h"
 #include "Rubik.h"
 
 #include <ctime>
@@ -100,6 +101,8 @@ bool Application::Init(int argc, char** argv)
     else if (!quick)
     {
         // init console gui
+        if (!sConsole->Init())
+            return false;
     }
     else
     {
@@ -116,20 +119,28 @@ int Application::Run()
 {
     int frames = 99;
 
-    while (true)
+    if (m_graphicMode)
     {
-        if (!sDrawing->Render())
-            break;
-
-        if (++frames == 100)
+        while (true)
         {
-            core::stringw str = L"Rubik's Cube - KIV/UIR [ ";
-            str += (s32)sDrawing->getDriver()->getFPS();
-            str += L" FPS ]";
+            if (!sDrawing->Render())
+                break;
 
-            sDrawing->getDevice()->setWindowCaption(str.c_str());
-            frames = 0;
+            if (++frames == 100)
+            {
+                core::stringw str = L"Rubik's Cube - KIV/UIR [ ";
+                str += (s32)sDrawing->getDriver()->getFPS();
+                str += L" FPS ]";
+
+                sDrawing->getDevice()->setWindowCaption(str.c_str());
+                frames = 0;
+            }
         }
+    }
+    else
+    {
+        // does not run in a loop - retains commands from stdin, etc.
+        sConsole->Run();
     }
 
     return 0;

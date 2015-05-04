@@ -784,7 +784,7 @@ void RubikCube::DoFlip(CubeFlip flip, bool draw)
 
 void RubikCube::PrintOut()
 {
-    /*int i, j;
+    int i, j;
 
     cout << endl;
 
@@ -792,20 +792,20 @@ void RubikCube::PrintOut()
     {
         cout << "   ";
         for (j = 0; j < 3; j++)
-            cout << rubikColorCode[m_faceArray[CF_BACK][i][j]];
+            cout << rubikColorCode[m_cubeCache[CF_UP][i][j]];
         cout << endl;
     }
 
     for (i = 0; i < 3; i++)
     {
         for (j = 0; j < 3; j++)
-            cout << rubikColorCode[m_faceArray[CF_LEFT][i][j]];
+            cout << rubikColorCode[m_cubeCache[CF_LEFT][i][j]];
         for (j = 0; j < 3; j++)
-            cout << rubikColorCode[m_faceArray[CF_DOWN][i][j]];
+            cout << rubikColorCode[m_cubeCache[CF_FRONT][i][j]];
         for (j = 0; j < 3; j++)
-            cout << rubikColorCode[m_faceArray[CF_RIGHT][i][j]];
+            cout << rubikColorCode[m_cubeCache[CF_RIGHT][i][j]];
         for (j = 0; j < 3; j++)
-            cout << rubikColorCode[m_faceArray[CF_UP][i][j]];
+            cout << rubikColorCode[m_cubeCache[CF_BACK][i][j]];
         cout << endl;
     }
 
@@ -813,9 +813,9 @@ void RubikCube::PrintOut()
     {
         cout << "   ";
         for (j = 0; j < 3; j++)
-            cout << rubikColorCode[m_faceArray[CF_FRONT][i][j]];
+            cout << rubikColorCode[m_cubeCache[CF_DOWN][i][j]];
         cout << endl;
-    }*/
+    }
 }
 
 // performs flip in linearized state and returns new state
@@ -1187,6 +1187,8 @@ bool RubikCube::LoadFromFile(char* filename)
         if (line.length() > 0 && line.at(0) != '#')
             lines.push_back(std::string(line));
     }
+
+    f.close();
 
     // now the only valid strings, that should be present are:
     // 1) at first 3 lines, there should be definition of spaces-preceded upper side
