@@ -7,6 +7,7 @@
 
 #include <ctime>
 
+// set implicit values in this constructor
 Application::Application()
 {
     m_graphicMode = true;
@@ -17,6 +18,7 @@ Application::~Application()
     //
 }
 
+// initialize the application with command line args
 bool Application::Init(int argc, char** argv)
 {
     /*
@@ -27,6 +29,7 @@ bool Application::Init(int argc, char** argv)
                 -q, --quick                 - if -i and -o are specified, just processes them and exits
     */
 
+    // some nice info
     cout << "Rubik's Cube solver" << endl;
     cout << "Semestral work for KIV/UIR subject of University of West Bohemia" << endl;
     cout << "Author: Martin Ubl (A13B0453P), 2015" << endl;
@@ -35,6 +38,7 @@ bool Application::Init(int argc, char** argv)
     std::string infile, outfile;
     bool nogui = false, quick = false;
 
+    // parse arguments...
     if (argc > 1)
     {
         int cur = 1;
@@ -124,13 +128,16 @@ int Application::Run()
 {
     int frames = 99;
 
+    // this stage depends on what type of application flow we chosed
     if (m_graphicMode)
     {
         while (true)
         {
+            // render everything
             if (!sDrawing->Render())
                 break;
 
+            // each 100 frames, update FPS in window title
             if (++frames == 100)
             {
                 core::stringw str = L"Rubik's Cube - KIV/UIR [ ";

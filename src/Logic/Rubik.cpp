@@ -11,6 +11,7 @@
 #include <fstream>
 using namespace std;
 
+// constructor - just reset some variables to initial state
 RubikCube::RubikCube()
 {
     m_progressStart = 0;
@@ -23,6 +24,7 @@ RubikCube::~RubikCube()
     //
 }
 
+// sets color of cube atom face - also manipulates mesh, if in GUI mode
 void CubeAtomFace::setColor(RubikColor cl)
 {
     if (sApplication->IsGraphicMode())
@@ -30,10 +32,13 @@ void CubeAtomFace::setColor(RubikColor cl)
     color = cl;
 }
 
+// builds cube face with specified parameters
 CubeAtomFace* RubikCube::BuildFace(ISceneManager* scene, IVideoDriver* videoDriver, CubeFace side, vector3df basePosition)
 {
     CubeAtomFace* face = new CubeAtomFace();
 
+    // face is in fact built only in GUI mode, but we still have to have this record present due to
+    // working with it
     if (sApplication->IsGraphicMode())
     {
         IMeshSceneNode* node;
@@ -45,20 +50,24 @@ CubeAtomFace* RubikCube::BuildFace(ISceneManager* scene, IVideoDriver* videoDriv
         face->baseRotation = cubeFaceRotation[side];
     }
 
-    face->parent = this;
-
     return face;
 }
 
+// builds rubik cube atom (one of those little cubes)
 CubeAtom* RubikCube::BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriver, vector3df basePosition, vector3di cubeOffset)
 {
     CubeAtom* atom = new CubeAtom();
 
+    // builds all faces and sets them implicit "none" color
     for (int i = CF_BEGIN; i < CF_END; i++)
     {
         atom->faces[i] = BuildFace(scene, videoDriver, (CubeFace)i, basePosition);
         atom->faces[i]->setColor(CL_NONE);
     }
+
+    // if it's the cube on some of edges/corners, assign color to it
+
+    // these are implicit colors, but every cube load from file will overwrite it
 
     if (cubeOffset.X == 1)
         atom->faces[CF_RIGHT]->setColor(CL_YELLOW);
@@ -78,16 +87,19 @@ CubeAtom* RubikCube::BuildCubeAtom(ISceneManager* scene, IVideoDriver* videoDriv
     return atom;
 }
 
+// stores cube atom to internal array
 void RubikCube::SetCubeAtom(int x, int y, int z, CubeAtom* atom)
 {
     m_cubeAtoms[(x + 1)][(y + 1)][(z + 1)] = atom;
 }
 
+// retrieves cube atom from internal array
 CubeAtom* RubikCube::GetAtom(int x, int y, int z)
 {
     return m_cubeAtoms[(x + 1)][(y + 1)][(z + 1)];
 }
 
+// caches cube to 3D array, so we can easily use it to text/graphical output
 void RubikCube::CacheCube()
 {
     CubeAtom* ca;
@@ -98,11 +110,16 @@ void RubikCube::CacheCube()
         {
             for (int z = 0; z <= 2; z++)
             {
+                // skip central cube - it's not visible at all
                 if (x == 1 && y == 1 && z == 1)
                     continue;
+                // retrieve atom (coordinates are from -1 to 1)
                 ca = GetAtom(x-1, y-1, z-1);
+                // if it does not exist (should not happen), skip
                 if (ca == nullptr)
                     continue;
+
+                // and cache colors depending on cube position
 
                 if (z == 0)
                     m_cubeCache[CF_FRONT][x][y] = ca->faces[CF_FRONT]->getColor();
@@ -123,6 +140,7 @@ void RubikCube::CacheCube()
     }
 }
 
+// restores cube cache to graphical representation; this comes in handy when loading from file
 void RubikCube::RestoreCacheCube()
 {
     CubeAtom* ca;
@@ -133,11 +151,15 @@ void RubikCube::RestoreCacheCube()
         {
             for (int z = 0; z <= 2; z++)
             {
+                // skip central cube (not visible at all)
                 if (x == 1 && y == 1 && z == 1)
                     continue;
+                // get cube atom at those coords
                 ca = GetAtom(x - 1, y - 1, z - 1);
                 if (ca == nullptr)
                     continue;
+
+                // and restore state of each cube side from cache
 
                 if (z == 0)
                     ca->faces[CF_FRONT]->setColor(m_cubeCache[CF_FRONT][x][y]);
@@ -158,39 +180,53 @@ void RubikCube::RestoreCacheCube()
     }
 }
 
+// main rendering function - called just in GUI mode
 void RubikCube::Render()
 {
     // no rendering in nogui mode
     if (!sApplication->IsGraphicMode())
         return;
 
+    // if there is flips in processing (or in queue, ..)
     if (m_toProgress != FLIP_NONE && m_progressStart > 0)
     {
+        // calculate progress (from progress start to now, should be number from 0 to 1)
         unsigned int diff = getMSTimeDiff(m_progressStart, getMSTime());
         float progress = ((float)diff) / (float)m_flipTiming;
 
+        // ending flag is set when progress is greater or equal 1 (means we finished progress on this flip)
         bool endflag = false;
         if (progress >= 1.0f)
         {
             endflag = true;
+            // note this line - we set progress to 0, so the cube is restored to original transformation
+            // BUT, after all those transformation magic, we performs flip in colors, so the cube would not
+            // be anyhow transformated, we just change colors at the end of transformation, and then restore
+            // cubes to original state
             progress = 0;
         }
 
         int x, y, z, dirX, dirY, dirZ, rotX, rotY, rotZ;
         int group;
 
+        // get all affected cubes
         CubeAtom* at;
+        // we iterate through 2 dimensions, because the third one is fixed in all flips
         for (int i = -1; i <= 1; i++)
         {
             for (int j = -1; j <= 1; j++)
             {
+                // rotation is, at first, determined from orintation of flip (+ or -)
                 rotX = (m_toProgress % 3) == 2 ? -1 : 1;
                 rotY = rotX;
                 rotZ = rotX;
 
+                // Now, this is madness
+                // we split flips to groups with two (four) members in the same axis, i.e. front and back are
+                // in the same group, because the flip behaves nearly the same (just orientation and offsets are bit different)
                 switch (m_toProgress)
                 {
-                    // GROUP 0
+                    // GROUP 0 - front and back
                     case FLIP_F_P:
                     case FLIP_F_N:
                         x = i;
@@ -217,7 +253,7 @@ void RubikCube::Render()
 
                         group = 0;
                         break;
-                    // GROUP 1
+                    // GROUP 1 - left and right
                     case FLIP_L_P:
                     case FLIP_L_N:
                         x = -1;
@@ -246,7 +282,7 @@ void RubikCube::Render()
 
                         group = 1;
                         break;
-                    // GROUP 2
+                    // GROUP 2 - up and down
                     case FLIP_U_P:
                     case FLIP_U_N:
                         x = i;
@@ -277,10 +313,12 @@ void RubikCube::Render()
                         break;
                 }
 
+                // retrieve atom
                 at = GetAtom(x, y, z);
                 if (!at)
                     continue;
 
+                // update all faces
                 for (int f = CF_BEGIN; f < CF_END; f++)
                 {
                     CubeAtomFace* caf = at->faces[f];
@@ -304,6 +342,7 @@ void RubikCube::Render()
                         // do not move center
                         if (x != 0 || y != 0)
                         {
+                            // move face to transformed position
                             caf->meshNode->setPosition(
                                 vector3df
                                 (
@@ -314,6 +353,7 @@ void RubikCube::Render()
                             );
                         }
 
+                        // we also need to rotate it a bit
                         caf->meshNode->setRotation(
                             vector3df
                             (
@@ -431,8 +471,10 @@ void RubikCube::Render()
             }
         }
 
+        // if ending flag is set
         if (endflag)
         {
+            // perform color change
             DoFlip(m_toProgress, true);
 
             // set next move from queue if any
@@ -444,7 +486,7 @@ void RubikCube::Render()
 
                 m_progressStart = getMSTime();
             }
-            else
+            else // if not, end flipping
             {
                 m_toProgress = FLIP_NONE;
                 cout << "\b\b  " << endl;
@@ -452,8 +494,11 @@ void RubikCube::Render()
         }
     }
 
+    // Now draw the 2D printout of rubik's cube
+
     int i, j;
 
+    // up face (offset to be up to front side)
     for (i = 0; i < 3; i++)
     {
         for (j = 0; j < 3; j++)
@@ -464,6 +509,7 @@ void RubikCube::Render()
         }
     }
 
+    // middle layer - left, front, right and back faces
     for (i = 0; i < 3; i++)
     {
         for (j = 0; j < 3; j++)
@@ -492,6 +538,7 @@ void RubikCube::Render()
         }
     }
 
+    // down face - also have offset to be under front face
     for (i = 0; i < 3; i++)
     {
         for (j = 0; j < 3; j++)
@@ -503,6 +550,7 @@ void RubikCube::Render()
     }
 }
 
+// generates random sequence of flips to mix the cube
 void RubikCube::Scramble(std::list<CubeFlip> *target)
 {
     CubeFlip a;
@@ -514,18 +562,22 @@ void RubikCube::Scramble(std::list<CubeFlip> *target)
     }
 }
 
+// proceeds supplied flip sequence, or pushes it into queue to be animated
 void RubikCube::ProceedFlipSequence(std::list<CubeFlip> *source, bool animate)
 {
+    // if not animating, just flip the cube instantly
     if (!animate)
     {
         for (std::list<CubeFlip>::iterator itr = source->begin(); itr != source->end(); ++itr)
             DoFlip(*itr, true);
     }
-    else
+    else // if yes, put it into queue and animate
     {
+        // if no moves specified, return
         if (!source || source->empty())
             return;
 
+        // copy flips to queue
         CubeFlip fl;
         for (std::list<CubeFlip>::iterator itr = source->begin(); itr != source->end(); ++itr)
         {
@@ -539,33 +591,41 @@ void RubikCube::ProceedFlipSequence(std::list<CubeFlip> *source, bool animate)
             m_flipQueue.push(fl);
         }
 
+        // pop first capable flip, and set it to processing state
         m_toProgress = m_flipQueue.front();
         m_flipQueue.pop();
 
+        // show something on console
         cout << getStrForFlip(m_toProgress) << ", ";
 
+        // and set progress start time
         m_progressStart = getMSTime();
     }
 }
 
+// builds cube using supplied scene manager and video driver
 void RubikCube::BuildCube(ISceneManager* scene, IVideoDriver* videoDriver)
 {
     if (sApplication->IsGraphicMode())
     {
+        // get mesh manipulator
         meshManipulator = scene->getMeshManipulator();
 
-        m_faceTexture = videoDriver->getTexture("../data/face.bmp");
-        m_faceMiniTexture = videoDriver->getTexture("../data/mini_face.bmp");
+        // build textures and store pointer to their structures
+        m_faceTexture = videoDriver->getTexture(DATA_DIR "face.bmp");
+        m_faceMiniTexture = videoDriver->getTexture(DATA_DIR "mini_face.bmp");
     }
 
     CubeAtom* tmp;
 
+    // build all cube atoms
     for (int ix = -1; ix <= 1; ix++)
     {
         for (int iy = -1; iy <= 1; iy++)
         {
             for (int iz = -1; iz <= 1; iz++)
             {
+                // skip the center (not visible cube)
                 if (ix == 0 && iy == 0 && iz == 0)
                     continue;
 
@@ -782,12 +842,14 @@ void RubikCube::DoFlip(CubeFlip flip, bool draw)
         CacheCube();
 }
 
+// prints out cube as string lines sequence
 void RubikCube::PrintOut()
 {
     int i, j;
 
     cout << endl;
 
+    // upper side, padded by spaces
     for (i = 0; i < 3; i++)
     {
         cout << "   ";
@@ -796,6 +858,7 @@ void RubikCube::PrintOut()
         cout << endl;
     }
 
+    // left, front, right and back sides
     for (i = 0; i < 3; i++)
     {
         for (j = 0; j < 3; j++)
@@ -809,6 +872,7 @@ void RubikCube::PrintOut()
         cout << endl;
     }
 
+    // down side, padded by spaces
     for (i = 0; i < 3; i++)
     {
         cout << "   ";
@@ -1170,6 +1234,7 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
     //
 }
 
+// loads cube configuration from file
 bool RubikCube::LoadFromFile(char* filename)
 {
     std::ifstream f(filename);

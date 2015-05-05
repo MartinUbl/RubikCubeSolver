@@ -24,6 +24,12 @@ using namespace gui;
 //#pragma comment(linker, "/subsystem:windows /ENTRY:mainCRTStartup")
 #endif
 
+#ifdef _DEBUG
+#define DATA_DIR "../data/"
+#else
+#define DATA_DIR "./data/"
+#endif
+
 #ifdef _WIN32
 #include <Windows.h>
 inline unsigned int getMSTime() { return GetTickCount(); }
