@@ -6,7 +6,8 @@
 // empty constructor
 Drawing::Drawing()
 {
-    //
+    m_messageToShow = "";
+    m_messageShowTimer = 0;
 }
 
 // empty destructor
@@ -80,13 +81,23 @@ bool Drawing::Render()
     m_appFont->draw(L"CONTROL\nR\t\t\t\t\tmix up the cube\nS\t\t\t\t\tsolve\n+ -\t\t\tspeed up/down flips", rect<s32>(5, 600 - 24*5, 100, 100), SColor(255, 0, 0, 127));
 
     // about flipping speed...
-    stringw repstr = "Flipping speed:";
+    stringw repstr = "Flipping speed: ";
     std::string str = std::to_string(sCube->GetFlipTiming() / 1000.0f);
     str.erase(str.find_last_not_of('0') + 1, std::string::npos);
     repstr += str.c_str();
     repstr += " s";
 
     m_appFont->draw(repstr, rect<s32>(5, 600 - 24, 100, 100), SColor(255, 0, 50, 240));
+
+    if (m_messageShowTimer > 0 && m_messageToShow.length() > 0)
+    {
+        if (getMSTimeDiff(m_messageShowTimer, getMSTime()) > 3000)
+        {
+            m_messageShowTimer = 0;
+        }
+
+        m_appFont->draw(m_messageToShow.c_str(), rect<s32>(5, 600 - 24*7, 100, 100), SColor(255, 100, 40, 40));
+    }
 
     m_irrGui->drawAll();
 
@@ -112,6 +123,13 @@ void Drawing::mouseMoveCallback(int deltaX, int deltaY)
 
         updateCameraPosition();
     }
+}
+
+// shows message on screen to let user know about something
+void Drawing::showMessage(char* message)
+{
+    m_messageToShow = std::string(message);
+    m_messageShowTimer = getMSTime();
 }
 
 // catches events from irrlicht engine
@@ -148,6 +166,9 @@ bool EventReceiver::OnEvent(const SEvent& event)
             // R - scramble cube
             case KEY_KEY_R:
             {
+                if (sCube->IsFlipSequenceInProgress())
+                    break;
+
                 cout << "Randomly mixing up cube:" << endl;
                 std::list<CubeFlip> fliplist;
                 sCube->Scramble(&fliplist);
@@ -157,6 +178,9 @@ bool EventReceiver::OnEvent(const SEvent& event)
             // S - solve cube
             case KEY_KEY_S:
             {
+                if (sCube->IsFlipSequenceInProgress())
+                    break;
+
                 cout << "Finding solution..." << endl;
                 std::list<CubeFlip> fliplist;
                 sCube->Solve(&fliplist);
@@ -164,6 +188,7 @@ bool EventReceiver::OnEvent(const SEvent& event)
                 if (fliplist.empty())
                 {
                     cout << "No solution found" << endl;
+                    sDrawing->showMessage("No solution found");
                 }
                 else
                 {

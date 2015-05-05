@@ -41,6 +41,8 @@ class Drawing
 
         void mouseMoveCallback(int deltaX, int deltaY);
 
+        void showMessage(char* message);
+
     private:
         Drawing();
         void updateCameraPosition();
@@ -54,6 +56,9 @@ class Drawing
 
         ICameraSceneNode* m_mainCamera;
         float m_cameraAngleX, m_cameraAngleY;
+
+        std::string m_messageToShow;
+        unsigned int m_messageShowTimer;
 };
 
 #endif

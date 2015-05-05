@@ -239,6 +239,9 @@ class RubikCube
         // processes flip sequence, instantly or animated (pushed to queue)
         void ProceedFlipSequence(std::list<CubeFlip> *source, bool animate);
 
+        // determines, if there are some flips in queue
+        bool IsFlipSequenceInProgress() { return !m_flipQueue.empty(); };
+
         // prints cube to console
         void PrintOut();
 
