@@ -29,6 +29,7 @@ bool ConsoleHandler::ProcessCommand(std::string &cmd)
         cout << "help               - prints this message" << endl;
         cout << "load <file>        - loads cube state from file" << endl;
         cout << "mixup              - randomly mixes current cube" << endl;
+        cout << "flip <flip>        - performs specified flip" << endl;
         cout << "solve              - solves current cube" << endl;
         cout << "solve save <file>  - saves solving sequence to file" << endl;
         cout << "print on           - the cube will be printed after eact flip" << endl;
@@ -103,6 +104,40 @@ bool ConsoleHandler::ProcessCommand(std::string &cmd)
         }
 
         cout << "Cube successfully mixed up in " << flist.size() << " flips" << endl;
+    }
+    // flip command - eighter print flip list, or performs flip
+    else if (cmd.length() >= 4 && cmd.substr(0, 4).compare("flip") == 0)
+    {
+        bool printhelp = true;
+
+        // flip is specified
+        if (cmd.length() > 5)
+        {
+            // get flip (as string, and then retrieve appropriate enum value)
+            std::string flipstr = cmd.substr(5);
+            CubeFlip fl = getFlipForStr((char*)flipstr.c_str());
+
+            // if this value exists..
+            if (fl != FLIP_NONE)
+            {
+                printhelp = false;
+
+                // perform flip and print out, if printing is on
+                sCube->DoFlip(fl, true);
+                cout << "Flipping: " << flipstr << endl;
+                if (m_printOn)
+                {
+                    sCube->PrintOut();
+                    cout << endl;
+                }
+            }
+        }
+
+        if (printhelp)
+        {
+            cout << "Syntax: flip <flip to proceed>" << endl;
+            cout << "Existing flips: F+, F2, F-, L+, L2, L-, R+, R2, R-, U+, U2, U-, D+, D2, D-, B+, B2, B-" << endl << endl;
+        }
     }
     // solve save command - solves cube and saves it to file specified
     else if (cmd.length() > 10 && cmd.substr(0, 11).compare("solve save ") == 0)
