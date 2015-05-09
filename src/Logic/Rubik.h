@@ -76,6 +76,8 @@ enum CubeFace
 // face codes for each cube face (index matches value from enumerator CubeFace)
 static char rubikFaceCode[] = { 'U', 'D', 'B', 'F', 'R', 'L' };
 
+static std::string solvedPermutation[] = { "UF", "UR", "UB", "UL", "DF", "DR", "DB", "DL", "FR", "FL", "BR", "BL", "UFR", "URB", "UBL", "ULF", "DRF", "DFL", "DLB", "DBR" };
+
 // this will then depend on user input (these are default values)
 static CubeFace colorFaceMap[] = {
     /* CL_RED */    CF_UP,

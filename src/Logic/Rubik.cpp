@@ -907,12 +907,17 @@ bigint RubikCube::DoLinearFlip(int move, bigint state)
             int target = flipCubeEffect[face][i] + isCorner * 12;
 
             // with what value (at which index) we will substitute
-            int killer = flipCubeEffect[face][(i & 3) == 3 ? i - 3 : i + 1] + isCorner * 12;
+            int source = flipCubeEffect[face][(i & 3) == 3 ? i - 3 : i + 1] + isCorner * 12;
 
-            // just determines which face we will flip
-            int orientationDelta = (i < 4) ? (face > 1 && face < 4) : ((face < 2) ? 0 : (2 - (i & 1)));
-            state.d[target] = oldState.d[killer];
-            state.d[target + 20] = oldState.d[killer + 20] + orientationDelta;
+            // just determines the orientation of flipped edge/corner (index of cyclic permutation)
+            int orientationDelta = isCorner ?
+                                        ((face < 2) ? 0 : (2 - (i & 1))) // if its corner, it has possible permutation indexes of 0, 1 and 2
+                                        :
+                                        (face > 1 && face < 4); // otherwise the permutation index changes only in F and B flips
+
+            state.d[target] = oldState.d[source];
+            // add orientation delta, regardless of mow much the change would exceed limit; the orientation will be cut off by module on last turn
+            state.d[target + 20] = oldState.d[source + 20] + orientationDelta;
 
             // at last turn, strip the hash portion to 1-2 bits
             if (!turns)
@@ -1058,10 +1063,7 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
     // reset solve stage
     m_solveStage = 0;
 
-    // permutation format inspired by: http://codegolf.stackexchange.com/questions/10768/solve-rubiks-cube
-
-    // this is the goal we would like to reach - zero transposition permutation
-    std::string goal[] = { "UF", "UR", "UB", "UL", "DF", "DR", "DB", "DL", "FR", "FL", "BR", "BL", "UFR", "URB", "UBL", "ULF", "DRF", "DFL", "DLB", "DBR" };
+    // permutation format inspired by: https://www.speedsolving.com/wiki/index.php/ACube
 
     // convert current cube to permutation table
     std::vector<std::string> permTable;
@@ -1069,20 +1071,21 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
 
     // just convert current state, and destination state to hashed structures
     bigint currentState(40);
-    bigint goalState(40);
+    bigint solvedState(40);
     std::string atom;
 
     for (int i = 0; i < STATE_STRING_LENGTH; i++)
     {
-        goalState.d[i] = i;
+        solvedState.d[i] = i;
 
         atom = permTable[i];
         // this little funky part of code will lookup the atom (means UF, UL, .. formatted permutation) in
         // goal state. If it's not found, permutate it (in case of edge atom, just switch UF to FU, etc.),
         // and verify that again - it has to be there now, otherwise it's error in preformatter, and we got
         // another equivalence group of states, thus no solution
+        // in upper part of hash (indexes 20 to 39) we store permutation index (0 = no permutation, 1 = first permutation, ..)
         int limit = atom.length() + 1;
-        while ((currentState.d[i] = find(goal, goal + 20, atom) - goal) == STATE_STRING_LENGTH)
+        while ((currentState.d[i] = find(solvedPermutation, solvedPermutation + 20, atom) - solvedPermutation) == STATE_STRING_LENGTH)
         {
             atom = atom.substr(1) + atom[0];
             currentState.d[i + STATE_STRING_LENGTH]++;
@@ -1109,10 +1112,10 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
         // the hash is different in every state! It depends on what are we about to solve this stage
         // i.e. in stage 1 we hash only edges due to their orientation, etc.
         bigint currentId = GetStateHash(currentState);
-        bigint goalId = GetStateHash(goalState);
+        bigint solvedId = GetStateHash(solvedState);
 
         // if we are there, skip and end
-        if (currentId == goalId)
+        if (currentId == solvedId)
             continue;
 
         // clear BFS queue (pop what left, if neccessarry)
@@ -1121,7 +1124,7 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
 
         // at the bottom, push goal state, and over it, push current state
         q.push(currentState);
-        q.push(goalState);
+        q.push(solvedState);
 
         // init helper maps to be able to return / go forward when finding solution ("path" in state graph)
         predecessor.clear(); // map of predecessors, to determine return path
@@ -1133,7 +1136,7 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
         // 1 = go forward (towards solution)
         // 2 = go backwards (away from solution, towards current state)
         direction[currentId] = 1;
-        direction[goalId] = 2;
+        direction[solvedId] = 2;
 
         // run bidirectional BFS
         while (true)
@@ -1188,7 +1191,7 @@ void RubikCube::Solve(std::list<CubeFlip> *target)
                             currId = predecessor[currId];
                         }
                         // backwards path
-                        while (newId != goalId)
+                        while (newId != solvedId)
                         {
                             // we need to inverse the last move to get the opposite direction
                             // push to the back, so we have last move 
